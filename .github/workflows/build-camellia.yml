@@ -1,0 +1,38 @@
+name: Build camellia UEFI skeleton
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["camellia"]
+    paths:
+      - "Platforms/Xiaomi/camelliaPkg/**"
+      - "Silicon/MediaTek/MT6833Pkg/**"
+      - "Resources/Configs/camellia.toml"
+      - "Resources/DTBs/camellia.dtb"
+      - ".github/workflows/build-camellia.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build camellia UEFI
+        run: |
+          bash ./setup_env.sh -p apt
+          python3 build_uefi.py -d camellia -r DEBUG
+
+      - name: Upload camellia UEFI artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: uefi-camellia-debug-skeleton
+          path: |
+            Mu-camellia.img
+            Build/camelliaPkg/**/FV/**
+            Platforms/Xiaomi/camelliaPkg/PORTING.md
+          if-no-files-found: error
+          compression-level: 9
