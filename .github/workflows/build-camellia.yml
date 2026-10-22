@@ -28,8 +28,10 @@ jobs:
 
       - name: Verify handoff beacon is packed
         run: |
-          beacon="$(find Build/camelliaPkg -type f -iname '*HandoffBeaconDxe*.ffs' -print -quit)"
+          beacon="$(find Build/camelliaPkg -type f -path '*HandoffBeaconDxe*/*.ffs' -print -quit)"
           test -n "$beacon"
+          grep -Fq "90D86835-325F-4D5B-9F75-5F8D427EA2DEHandoffBeaconDxe" \
+            Build/camelliaPkg/DEBUG_CLANGPDB/FV/FVMAIN.inf
           echo "Packed handoff beacon: $beacon"
 
       - name: Upload camellia UEFI artifacts
