@@ -1,0 +1,19 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = HandoffBeaconDxe
+  FILE_GUID                      = 90D86835-325F-4D5B-9F75-5F8D427EA2DE
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = HandoffBeaconEntry
+
+[Sources]
+  HandoffBeaconDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+
+[Depex]
+  TRUE

@@ -1,5 +1,6 @@
 APRIORI DXE {
   INF MdeModulePkg/Core/Dxe/DxeMain.inf
+  INF camelliaPkg/Drivers/HandoffBeaconDxe/HandoffBeaconDxe.inf
   INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
 
   INF MdeModulePkg/Universal/ReportStatusCodeRouter/RuntimeDxe/ReportStatusCodeRouterRuntimeDxe.inf

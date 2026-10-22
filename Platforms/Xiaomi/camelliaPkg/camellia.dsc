@@ -74,6 +74,11 @@
 
 [Components]
   #
+  # Early handoff diagnostic
+  #
+  camelliaPkg/Drivers/HandoffBeaconDxe/HandoffBeaconDxe.inf
+
+  #
   # ACPI Tables
   #
   # Placeholder until a camellia ACPI platform is derived from the stock DTB.
