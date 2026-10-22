@@ -26,6 +26,12 @@ jobs:
           bash ./setup_env.sh -p apt
           python3 build_uefi.py -d camellia -r DEBUG
 
+      - name: Verify handoff beacon is packed
+        run: |
+          beacon="$(find Build/camelliaPkg -type f -iname '*HandoffBeaconDxe*.ffs' -print -quit)"
+          test -n "$beacon"
+          echo "Packed handoff beacon: $beacon"
+
       - name: Upload camellia UEFI artifacts
         uses: actions/upload-artifact@v4
         with:
