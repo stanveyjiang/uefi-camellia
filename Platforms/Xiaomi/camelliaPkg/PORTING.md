@@ -42,7 +42,9 @@ header_version = 2
 The following items are intentionally incomplete and must not be treated as
 hardware support:
 
-1. `Resources/DTBs/camellia.dtb` is currently a copied lancelot DTB placeholder.
+1. `Resources/DTBs/camellia.dtb` is the unmodified FDT extracted from this
+   device's official V13.0.9.0 boot image. LK runtime fixups still need to be
+   verified on hardware.
 2. ACPI still uses the lancelot placeholder table.
 3. `MemoryMapLib` still carries lancelot reservations and register windows.
 4. `ClockImplLib`, `GpioImplLib`, `PmicWrapperImplLib` and `MsdcImplLib` are
