@@ -120,7 +120,7 @@ FbPageMapCopyTo (
   }
 }
 
-STATIC
+STATIC __attribute__((unused))
 VOID
 FbPageMapFill32 (
   IN FB_PAGE_MAP  *Map,
@@ -180,7 +180,7 @@ FbPageMapFlush (
   }
 }
 
-STATIC
+STATIC __attribute__((unused))
 inline
 BOOLEAN
 FbPageMapGetContiguousBase (
