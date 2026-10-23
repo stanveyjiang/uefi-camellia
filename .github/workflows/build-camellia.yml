@@ -7,6 +7,7 @@ on:
     paths:
       - "Platforms/Xiaomi/camelliaPkg/**"
       - "Silicon/MediaTek/MT6833Pkg/**"
+      - "Silicon/Silicium/SiliciumPkg/**"
       - "Resources/Configs/camellia.toml"
       - "Resources/DTBs/camellia.dtb"
       - ".github/workflows/build-camellia.yml"
