@@ -3,8 +3,16 @@
 #include <Library/MemoryMapHelperLib.h>
 #include <Library/SerialPortLib.h>
 #include <Library/TimerLib.h>
+#include <Library/FrameBufferMap.h>
 
 #include "FrameBuffer.h"
+
+STATIC UINT32 gFbWidth = 1088;
+STATIC UINT32 gFbHeight = 2400;
+STATIC UINT32 gFbPitch = 1088 * 4;
+STATIC EFI_FRAME_BUFFER_POSITION mCurrentPosition;
+STATIC FB_PAGE_MAP *mPageMap;
+
 #include "Font.h"
 
 inline
@@ -70,10 +78,11 @@ VOID
 DrawGlyph (
   IN UINT8  *Pixels,
   IN UINT64  Glyph,
-  IN UINT32  FontScale)
+  IN UINT32  FontScale,
+  IN UINTN   RowPitch)
 {
   // Calculate Stride
-  UINTN Stride = (FB_WIDTH - (FONT_WIDTH * FontScale)) * FB_BPP;
+  UINTN Stride = RowPitch - (FONT_WIDTH * FontScale * FB_BPP);
 
   // Split Glyph
   UINT32 TopGlyph    = (UINT32)(Glyph >> 32);
@@ -114,7 +123,13 @@ AdvanceNewLine (
   // Verify Y Position
   if (CurrentPosition->YPos >= MaxPosition.YPos) {
     // Clear Frame Buffer
-    ZeroMem ((VOID *)FbBase, FB_WIDTH * FB_HEIGHT * FB_BPP);
+    FbPageMapFill32 (
+      mPageMap,
+      0,
+      0,
+      (UINTN)((UINT64)gFbPitch * gFbHeight / sizeof (UINT32))
+      );
+    FbPageMapFlush (mPageMap, 0, FbLength);
 
     // Reset X & Y Position
     CurrentPosition->XPos = 0;
@@ -126,7 +141,7 @@ UINT8
 GetFontScale ()
 {
   // Get Smaller Display Dimension
-  UINT32 ShorterDimension = (FB_WIDTH < FB_HEIGHT) ? FB_WIDTH : FB_HEIGHT;
+  UINT32 ShorterDimension = (gFbWidth < gFbHeight) ? gFbWidth : gFbHeight;
 
   // Return Calculated Font Scale
   return (ShorterDimension < 426) ? 1 : (UINT8)(ShorterDimension / 426);
@@ -142,12 +157,17 @@ GetFbPositions (
 {
   EFI_FRAME_BUFFER_POSITION LocalMaxPosition;
 
-  // Get Current Position
-  *CurrentPosition = (EFI_FRAME_BUFFER_POSITION *)(FbBase + FbLength - sizeof (EFI_FRAME_BUFFER_POSITION));
+  (VOID)FbBase;
+  (VOID)FbLength;
+
+  // Keep console state in the driver image. The frame buffer itself may
+  // contain arbitrary pixels supplied by the loader, so its tail cannot be
+  // used as zero-initialized cursor storage.
+  *CurrentPosition = &mCurrentPosition;
 
   // Calculate Max Positions
-  LocalMaxPosition.XPos = FB_WIDTH  / ((FONT_WIDTH  + 1) * FontScale);
-  LocalMaxPosition.YPos = FB_HEIGHT / ((FONT_HEIGHT - 4) * FontScale);
+  LocalMaxPosition.XPos = gFbWidth  / ((FONT_WIDTH  + 1) * FontScale);
+  LocalMaxPosition.YPos = gFbHeight / ((FONT_HEIGHT - 4) * FontScale);
 
   // Pass Max Position
   *MaxPosition = LocalMaxPosition;
@@ -161,7 +181,10 @@ WriteFrameBuffer (
 {
   EFI_FRAME_BUFFER_POSITION *CurrentPosition;
   EFI_FRAME_BUFFER_POSITION  MaxPosition;
-  UINT8                     *Pixels;
+  UINT8                      GlyphBuffer[8192];
+  UINTN                      GlyphPitch;
+  UINTN                      GlyphBytes;
+  UINTN                      Row;
 
   // Set Glyph Font
   STATIC CONST UINT64 GlyphFont[] = GLYPH_FONT;
@@ -183,6 +206,9 @@ WriteFrameBuffer (
       AdvanceNewLine (FbBase, FbLength, CurrentPosition, MaxPosition);
     } else if (Character == '\r') {
       CurrentPosition->XPos = 0;
+    } else if (Character == '\f') {
+      CurrentPosition->XPos = 0;
+      CurrentPosition->YPos = 0;
     }
 
     return;
@@ -199,14 +225,28 @@ WriteFrameBuffer (
   // Calculate Glyph Dimension
   UINTN GlyphWidth  = (FONT_WIDTH  + 1) * GlyphFontScale;
   UINTN GlyphHeight = (FONT_HEIGHT - 4) * GlyphFontScale;
+  UINT64 FbOffset;
 
-  // Set Glyph Pixels
-  Pixels  = (VOID *)FbBase;
-  Pixels += (UINTN)CurrentPosition->YPos * GlyphHeight * (FB_WIDTH * FB_BPP);
-  Pixels += (UINTN)CurrentPosition->XPos * GlyphWidth  * FB_BPP;
+  GlyphPitch = (FONT_WIDTH + 1) * GlyphFontScale * FB_BPP;
+  GlyphBytes = FONT_WIDTH * GlyphFontScale * FB_BPP;
+  if (GlyphPitch * GlyphHeight > sizeof (GlyphBuffer)) {
+    return;
+  }
 
-  // Draw Glyph
-  DrawGlyph (Pixels, Glyph, GlyphFontScale);
+  ZeroMem (GlyphBuffer, sizeof (GlyphBuffer));
+  DrawGlyph (GlyphBuffer, Glyph, GlyphFontScale, GlyphPitch);
+
+  FbOffset  = (UINT64)CurrentPosition->YPos * GlyphHeight * gFbPitch;
+  FbOffset += (UINT64)CurrentPosition->XPos * GlyphWidth * FB_BPP;
+  for (Row = 0; Row < GlyphHeight; Row++) {
+    FbPageMapCopyTo (
+      mPageMap,
+      FbOffset + Row * gFbPitch,
+      GlyphBuffer + Row * GlyphPitch,
+      GlyphBytes
+      );
+  }
+  FbPageMapFlush (mPageMap, FbOffset, GlyphHeight * gFbPitch);
 
   // Increase X Position
   CurrentPosition->XPos++;
@@ -222,18 +262,24 @@ GetFrameBufferMemory (
   OUT EFI_PHYSICAL_ADDRESS *Base,
   OUT UINT64               *Length)
 {
-  EFI_MEMORY_REGION_DESCRIPTOR FbRegion;
+  FB_HANDOFF *Handoff = (FB_HANDOFF *)FB_HANDOFF_ADDR;
 
-  // Locate "Display Reserved" Memory Region
-  LocateMemoryRegionByName ("Display Reserved", &FbRegion);
-  LocateMemoryRegionByName ("Display_Reserved", &FbRegion);
-  if (!FbRegion.Address && !FbRegion.Length) {
+  if (Handoff->Magic != FB_HANDOFF_MAGIC) {
     return EFI_NOT_FOUND;
   }
 
+  gFbWidth = Handoff->Width;
+  gFbHeight = Handoff->Height;
+  gFbPitch = Handoff->Pitch;
+  mPageMap = (FB_PAGE_MAP *)(UINTN)FB_PAGE_MAP_ADDR;
+  if (!FbPageMapIsValid (mPageMap)) {
+    mPageMap = NULL;
+    return EFI_UNSUPPORTED;
+  }
+
   // Pass Frame Buffer Memory
-  *Base   = FbRegion.Address;
-  *Length = FbRegion.Length;
+  *Base   = Handoff->Base;
+  *Length = (UINT64)Handoff->Pitch * Handoff->Height;
 
   return EFI_SUCCESS;
 }
@@ -272,8 +318,8 @@ SerialPortWrite (
     ArmEnableInterrupts ();
   }
 
-  // Flush Frame Buffer
-  WriteBackInvalidateDataCacheRange ((VOID *)FbBase, FbLength);
+  // Flush all physical pages backing the logical frame buffer.
+  FbPageMapFlush (mPageMap, 0, FbLength);
 
   return NumberOfBytes;
 }

@@ -5,6 +5,9 @@
 #include <Library/MemoryMapHelperLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PcdLib.h>
+#include <Library/DxeServicesTableLib.h>
+#include <Library/CacheMaintenanceLib.h>
+#include <Library/FrameBufferMap.h>
 
 #include <Configuration/BootDevices.h>
 
@@ -12,6 +15,11 @@
 // Global Variables
 //
 STATIC FRAME_BUFFER_CONFIGURE *FrameBufferConfiguration;
+STATIC UINT32 FrameBufferPitch;
+STATIC FB_PAGE_MAP *FrameBufferPageMap;
+STATIC VOID *FrameBufferShadow;
+STATIC EFI_PHYSICAL_ADDRESS FrameBufferDirectBase;
+STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL mFrameBuffer;
 
 EFI_STATUS
 FrameBufferQueryMode (
@@ -64,12 +72,75 @@ FrameBufferGopBlt (
 {
   EFI_STATUS Status;
   EFI_TPL    Tpl;
+  UINTN      Row;
+  UINTN      BytesPerPixel;
+  UINTN      RowsCopied;
+  UINTN      LastRowBytes;
+  UINTN      DirectOffset;
+  UINTN      DirectLength;
 
   // Raise TPL Level
   Tpl = gBS->RaiseTPL (TPL_NOTIFY);
 
   // Draw to Frame Buffer
   Status = FrameBufferBlt (FrameBufferConfiguration, BltBuffer, BltOperation, SourceX, SourceY, DestinationX, DestinationY, Width, Height, Delta);
+
+  if (!EFI_ERROR (Status) && (FrameBufferPageMap != NULL) &&
+      (FrameBufferShadow != NULL) &&
+      ((BltOperation == EfiBltVideoFill) ||
+       (BltOperation == EfiBltBufferToVideo) ||
+       (BltOperation == EfiBltVideoToVideo))) {
+    BytesPerPixel = 4;
+    RowsCopied = 0;
+    LastRowBytes = 0;
+    for (Row = 0; Row < Height; Row++) {
+      UINTN DestinationOffset;
+      UINTN RowBytes;
+
+      if (DestinationY + Row >= mFrameBuffer.Mode->Info->VerticalResolution ||
+          DestinationX >= mFrameBuffer.Mode->Info->HorizontalResolution) {
+        break;
+      }
+      RowBytes = MIN (
+                   Width * BytesPerPixel,
+                   (UINTN)(mFrameBuffer.Mode->Info->HorizontalResolution -
+                           DestinationX) * BytesPerPixel
+                   );
+      DestinationOffset =
+        (DestinationY + Row) * FrameBufferPitch + DestinationX * BytesPerPixel;
+      if (FrameBufferDirectBase != 0) {
+        CopyMem (
+          (UINT8 *)(UINTN)FrameBufferDirectBase + DestinationOffset,
+          (UINT8 *)FrameBufferShadow + DestinationOffset,
+          RowBytes
+          );
+      } else {
+        FbPageMapCopyTo (
+          FrameBufferPageMap,
+          DestinationOffset,
+          (UINT8 *)FrameBufferShadow + DestinationOffset,
+          RowBytes
+          );
+      }
+      RowsCopied++;
+      LastRowBytes = RowBytes;
+    }
+
+    if (RowsCopied != 0) {
+      DirectOffset =
+        DestinationY * FrameBufferPitch + DestinationX * BytesPerPixel;
+      DirectLength =
+        (RowsCopied - 1) * FrameBufferPitch + LastRowBytes;
+      if (FrameBufferDirectBase != 0) {
+        WriteBackDataCacheRange (
+          (VOID *)(UINTN)(FrameBufferDirectBase + DirectOffset),
+          DirectLength
+          );
+      } else {
+        FbPageMapFlush (FrameBufferPageMap, DirectOffset, DirectLength);
+      }
+    }
+  }
 
   // Restore TPL Level
   gBS->RestoreTPL (Tpl);
@@ -91,22 +162,19 @@ GetFrameBufferInfos (
   OUT UINT32               *Height,
   OUT UINT32               *ColorDepth)
 {
-  EFI_MEMORY_REGION_DESCRIPTOR FrameBufferRegion;
+  FB_HANDOFF *Handoff = (FB_HANDOFF *)FB_HANDOFF_ADDR;
 
-  // Locate "Display Reserved" Memory Region
-  LocateMemoryRegionByName ("Display Reserved", &FrameBufferRegion);
-  LocateMemoryRegionByName ("Display_Reserved", &FrameBufferRegion);
-
-  // Verify Frame Buffer Region
-  if (!FrameBufferRegion.Address) {
-    DEBUG ((EFI_D_ERROR, "Failed to Locate \"Display Reserved\" Memory Region!\n"));
+  if (Handoff->Magic != FB_HANDOFF_MAGIC) {
+    DEBUG ((EFI_D_ERROR, "FB handoff magic mismatch: 0x%llx\n", Handoff->Magic));
     return EFI_NOT_FOUND;
   }
 
   // Get Frame Buffer Details
-  *Width      = FixedPcdGet32 (PcdFrameBufferWidth);
-  *Height     = FixedPcdGet32 (PcdFrameBufferHeight);
-  *ColorDepth = FixedPcdGet32 (PcdFrameBufferColorDepth);
+  *BaseAddress = Handoff->Base;
+  *Width       = Handoff->Width;
+  *Height      = Handoff->Height;
+  *ColorDepth  = Handoff->Depth;
+  FrameBufferPitch = Handoff->Pitch;
 
   // Verify Frame Buffer Resolution
   if (*Width < 640 || *Height < 475) {
@@ -115,9 +183,6 @@ GetFrameBufferInfos (
 
     return EFI_UNSUPPORTED;
   }
-
-  // Pass Frame Buffer Address
-  *BaseAddress = FrameBufferRegion.Address;
 
   return EFI_SUCCESS;
 }
@@ -166,7 +231,7 @@ SetFrameBufferModeDetails (
 
   // Set Frame Buffer Range
   mFrameBuffer.Mode->FrameBufferBase = BaseAddress;
-  mFrameBuffer.Mode->FrameBufferSize = Width * Height * (ColorDepth / 8);
+  mFrameBuffer.Mode->FrameBufferSize = (UINT64)FrameBufferPitch * Height;
 
   // Set Mode Info Version
   mFrameBuffer.Mode->Info->Version = 0;
@@ -174,7 +239,7 @@ SetFrameBufferModeDetails (
   // Set Frame Buffer Infos
   mFrameBuffer.Mode->Info->HorizontalResolution = Width;
   mFrameBuffer.Mode->Info->VerticalResolution   = Height;
-  mFrameBuffer.Mode->Info->PixelsPerScanLine    = Width;
+  mFrameBuffer.Mode->Info->PixelsPerScanLine    = FrameBufferPitch / (ColorDepth / 8);
 
   // Set Pixel Format
   switch (ColorDepth) {
@@ -237,8 +302,13 @@ CreateFrameBufferConfig (IN EFI_PHYSICAL_ADDRESS BaseAddress)
 VOID
 FreeMemoryBuffers ()
 {
+  if (FrameBufferShadow != NULL) {
+    gBS->FreePool (FrameBufferShadow);
+    FrameBufferShadow = NULL;
+  }
+
   // Free Buffer
-  if (mFrameBuffer.Mode->Info != NULL) {
+  if ((mFrameBuffer.Mode != NULL) && (mFrameBuffer.Mode->Info != NULL)) {
     gBS->FreePool (mFrameBuffer.Mode->Info);
   }
 
@@ -250,6 +320,7 @@ FreeMemoryBuffers ()
   // Free Buffer
   if (FrameBufferConfiguration != NULL) {
     FreePool (FrameBufferConfiguration);
+    FrameBufferConfiguration = NULL;
   }
 }
 
@@ -264,12 +335,79 @@ RegisterFrameBuffer (
   UINT32               Width;
   UINT32               Height;
   UINT32               ColorDepth;
+  UINTN                FrameBufferSize;
+  EFI_PHYSICAL_ADDRESS DisplayBase;
+  EFI_PHYSICAL_ADDRESS ContiguousBase;
+  EFI_GCD_MEMORY_SPACE_DESCRIPTOR Gcd;
+  BOOLEAN              FramebufferIsContiguous;
 
   // Get Frame Buffer Infos
   Status = GetFrameBufferInfos (&BaseAddress, &Width, &Height, &ColorDepth);
   if (EFI_ERROR (Status)) {
     return Status;
   }
+
+  FrameBufferPageMap = (FB_PAGE_MAP *)(UINTN)FB_PAGE_MAP_ADDR;
+  if (!FbPageMapIsValid (FrameBufferPageMap)) {
+    DEBUG ((EFI_D_ERROR, "FB page map magic/size mismatch\n"));
+    FrameBufferPageMap = NULL;
+    return EFI_UNSUPPORTED;
+  }
+
+  // Map the (dynamically allocated) frame buffer into the GCD space so the
+  // MMU makes it accessible; it is not part of the static platform memory map.
+  FrameBufferSize = (UINTN)FrameBufferPitch * Height;
+  FrameBufferSize = (FrameBufferSize + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE - 1);
+
+  Status = gDS->GetMemorySpaceDescriptor (BaseAddress, &Gcd);
+  if (EFI_ERROR (Status)) {
+    Status = gDS->AddMemorySpace (EfiGcdMemoryTypeSystemMemory,
+                                  BaseAddress, FrameBufferSize,
+                                  EFI_MEMORY_WT);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((EFI_D_ERROR, "AddMemorySpace for frame buffer failed: %r\n", Status));
+      return Status;
+    }
+  }
+
+  DEBUG ((
+    EFI_D_WARN,
+    "FB base 0x%lx size 0x%lx gcd type %u attr 0x%lx cap 0x%lx\n",
+    BaseAddress,
+    FrameBufferSize,
+    Gcd.GcdMemoryType,
+    Gcd.Attributes,
+    Gcd.Capabilities
+    ));
+
+  if ((Gcd.Attributes & EFI_CACHE_ATTRIBUTE_MASK) != EFI_MEMORY_WT) {
+    Status = gDS->SetMemorySpaceAttributes (BaseAddress, FrameBufferSize,
+                                            EFI_MEMORY_WT);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((EFI_D_ERROR, "SetMemorySpaceAttributes for frame buffer failed: %r\n", Status));
+    }
+  }
+
+  FramebufferIsContiguous = FbPageMapGetContiguousBase (
+                              FrameBufferPageMap,
+                              BaseAddress,
+                              FrameBufferSize,
+                              &ContiguousBase
+                              );
+
+  //
+  // UEFI graphics consumers draw into a linear shadow. Each completed Blt is
+  // synchronized into the run map, which also covers the contiguous case.
+  //
+  Status = gBS->AllocatePool (EfiBootServicesData, FrameBufferSize,
+                              &FrameBufferShadow);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "Failed to allocate FB shadow: %r\n", Status));
+    FrameBufferShadow = NULL;
+    return Status;
+  }
+  ZeroMem (FrameBufferShadow, FrameBufferSize);
+  DisplayBase = (EFI_PHYSICAL_ADDRESS)(UINTN)FrameBufferShadow;
 
   // Allocate Memory
   Status = AllocateGopMemory ();
@@ -278,13 +416,22 @@ RegisterFrameBuffer (
   }
 
   // Set Frame Buffer Mode Details
-  Status = SetFrameBufferModeDetails (BaseAddress, Width, Height, ColorDepth);
+  Status = SetFrameBufferModeDetails (DisplayBase, Width, Height, ColorDepth);
   if (EFI_ERROR (Status)) {
     goto cleanup;
   }
+  if (FramebufferIsContiguous) {
+    //
+    // DarwinBoot receives FrameBufferBase through GOP. Publish the real
+    // contiguous scanout address while keeping Blt on the shadow above.
+    //
+    mFrameBuffer.Mode->FrameBufferBase = ContiguousBase;
+    FrameBufferDirectBase = ContiguousBase;
+    DEBUG ((EFI_D_WARN, "FB direct handoff base 0x%lx\n", ContiguousBase));
+  }
 
   // Create Frame Buffer Config
-  Status = CreateFrameBufferConfig (BaseAddress);
+  Status = CreateFrameBufferConfig (DisplayBase);
   if (EFI_ERROR (Status)) {
     goto cleanup;
   }

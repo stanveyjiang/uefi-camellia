@@ -1,0 +1,29 @@
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = CamelliaRamDiskDxe
+  FILE_GUID                      = 4A8A70E2-C959-4E3D-9A65-72E205BC4681
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = CamelliaRamDiskEntry
+
+[Sources]
+  CamelliaRamDiskDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  BaseMemoryLib
+  DebugLib
+  DxeServicesTableLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiBlockIoProtocolGuid                       ## PRODUCES
+  gEfiDevicePathProtocolGuid                    ## PRODUCES
+  gEfiDiskIoProtocolGuid                        ## PRODUCES
+
+[Depex]
+  TRUE

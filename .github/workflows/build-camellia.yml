@@ -3,7 +3,7 @@ name: Build camellia UEFI skeleton
 on:
   workflow_dispatch:
   push:
-    branches: ["camellia"]
+    branches: ["camellia", "feature/camellia-bringup"]
     paths:
       - "Platforms/Xiaomi/camelliaPkg/**"
       - "Silicon/MediaTek/MT6833Pkg/**"

@@ -118,9 +118,11 @@ MemoryPeim (
 
   // Get Memory Map
   GetMemoryMap (&MemoryDescriptor, &MemoryDescriptorCount);
+  DEBUG ((EFI_D_WARN, "MMU map %u\n", MemoryDescriptorCount));
 
   // Validate Memory Map
   ValidateMemoryMap (MemoryDescriptor, MemoryDescriptorCount);
+  DEBUG ((EFI_D_WARN, "MMU sorted\n"));
 
   // Go thru each Memory Region
   for (UINT8 i = 0; i < MemoryDescriptorCount; i++) {
@@ -141,9 +143,11 @@ MemoryPeim (
     // Increase Memory Table Index
     Index++;
   }
+  DEBUG ((EFI_D_WARN, "MMU table %u\n", Index));
 
   // Configure MMU
   Status = ArmConfigureMmu (MemoryTable, &TranslationTableBase, &TranslationTableSize);
+  DEBUG ((EFI_D_WARN, "MMU config returned %r\n", Status));
   if (EFI_ERROR (Status)) {
     DEBUG ((EFI_D_ERROR, "Failed to Configure MMU! Status = %r\n", Status));
     return Status;

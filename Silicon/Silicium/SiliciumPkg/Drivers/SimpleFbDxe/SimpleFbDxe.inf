@@ -20,6 +20,7 @@
   FrameBufferBltLib
   UefiBootServicesTableLib
   UefiDriverEntryPoint
+  DxeServicesTableLib
   MemoryAllocationLib
   MemoryMapHelperLib
   BaseMemoryLib

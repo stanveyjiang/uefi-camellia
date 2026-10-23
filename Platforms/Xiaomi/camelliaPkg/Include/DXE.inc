@@ -1,5 +1,6 @@
   INF MdeModulePkg/Core/Dxe/DxeMain.inf
   INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
+  INF camelliaPkg/Drivers/CamelliaBootMemoryDxe/CamelliaBootMemoryDxe.inf
   INF ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   INF MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
   INF MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf
@@ -19,6 +20,7 @@
   INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
+  INF camelliaPkg/Drivers/CamelliaUniXNULoaderDxe/CamelliaUniXNULoaderDxe.inf
   INF ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.inf
   INF ArmPkg/Drivers/TimerDxe/TimerDxe.inf
   INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
@@ -30,11 +32,6 @@
   INF MediaTekPkg/Drivers/ClockDxe/ClockDxe.inf
   INF MediaTekPkg/Drivers/PmicWrapperDxe/PmicWrapperDxe.inf
   INF MediaTekPkg/Drivers/MT6358PmicDxe/MT6358PmicDxe.inf
-
-  INF MediaTekPkg/Drivers/MsdcDxe/MsdcDxe.inf
-
-  INF MdeModulePkg/Bus/Sd/EmmcDxe/EmmcDxe.inf
-  INF MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
 
 !if $(USE_CUSTOM_DISPLAY_DRIVER) == 0
   INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf

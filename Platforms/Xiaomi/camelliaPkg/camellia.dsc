@@ -32,6 +32,7 @@
   # DDR Memory
   #
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0x40000000
+  gArmTokenSpaceGuid.PcdSystemMemorySize|0x1C0000000
 
   #
   # UEFI Stack
@@ -73,6 +74,13 @@
   KeypadDeviceLib|camelliaPkg/Library/KeypadDeviceLib/KeypadDeviceLib.inf
 
 [Components]
+  #
+  # Early handoff and payload publication
+  #
+  camelliaPkg/Drivers/CamelliaBootMemoryDxe/CamelliaBootMemoryDxe.inf
+  camelliaPkg/Drivers/CamelliaRamDiskDxe/CamelliaRamDiskDxe.inf
+  camelliaPkg/Drivers/CamelliaUniXNULoaderDxe/CamelliaUniXNULoaderDxe.inf
+
   #
   # ACPI Tables
   #

@@ -1,0 +1,12 @@
+These EFI binaries are generated from the UniXNU project and are build inputs
+for the camellia firmware. They do not contain private device data.
+
+UniXNU branch:
+  https://github.com/stanveyjiang/UniXNU/tree/feature/camellia-bringup
+
+SHA-256:
+  089861fb96d8c0caf931cbb759e95e2b2270748f25a345d0ef2cd1abee4c9119  UniXNU.efi
+  09d0f2901d2c08cbfe2fbdedb9e756e05861beb8d5a7ead7aa65ca817624c20c  UniXNUDxe.efi
+
+Regenerate these files from the UniXNU package build before publishing a
+release firmware image.

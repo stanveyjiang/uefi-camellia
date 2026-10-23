@@ -1,11 +1,31 @@
-# camellia (MT6833) bring-up skeleton
+# camellia (MT6833) bring-up
 
-> **Not hardware validated. Do not flash this firmware yet.**
+> **Work in progress. Do not treat this branch as a release firmware.**
 
 This package is derived from `lancelotPkg` and `MT6789Pkg`. It is the compileable
 starting point for the Redmi Note 10 5G (`camellia`, MediaTek MT6833 /
-Dimensity 700). The first milestone is only to produce an FD and inspect its
-size and contents.
+Dimensity 700).
+
+## Current status
+
+The Linux hot-jump path is hardware validated:
+
+```text
+LK
+-> project Linux kernel
+-> minimal initramfs
+-> linear DRM framebuffer
+-> uefi_jump.ko
+-> UEFI
+-> UniXNU
+-> DarwinBoot
+-> XNU entry
+```
+
+The UEFI firmware, scatter-page framebuffer shadow, RamDisk payload and
+UniXNU menu work on hardware. DarwinBoot reaches the MMU-off XNU entry.
+XNU currently stops in its first bootstrap page-table mapping; this branch is
+therefore a development snapshot rather than a bootable release.
 
 ## Known hardware values
 
@@ -51,14 +71,13 @@ hardware support:
    copied from MT6789 and need MT6833/MT6359 implementation work.
 5. `PcdStorageIsEMMC` is disabled because camellia uses UFS 2.2. There is no
    UFS DXE yet.
-6. `SimpleFbDxe` cannot be assumed to produce a visible screen: L0 proved that
-   the LK framebuffer is not still scanned after handoff. A real DisplayDxe is
-   required.
+6. `SimpleFbDxe` uses the page map produced by `uefi_jump`. It provides a
+   linear shadow to GOP consumers and copies completed updates into the
+   scattered scanout pages.
 
-## First milestone
+## Next milestone
 
-- Probe includes a camellia package and MT6833 package.
-- Generate `Build/camelliaPkg/{DEBUG,RELEASE}_*/FV/SILICIUM_UEFI.fd`.
-- Inspect FV contents and confirm the image fits its intended window.
-- Do not create a flashable boot image until the DTB, memory map and display
-  path have real camellia data.
+- Diagnose the XNU bootstrap page-table loop without bypassing mappings.
+- Confirm runtime boot args, fixed-window ownership and MMU handoff.
+- Reach XNU `arm_init`, then add the platform and display drivers.
+- Remove all remaining bring-up diagnostics before packaging a release image.

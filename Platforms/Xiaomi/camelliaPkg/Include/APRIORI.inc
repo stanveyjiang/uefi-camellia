@@ -6,6 +6,10 @@ APRIORI DXE {
   INF MdeModulePkg/Universal/StatusCodeHandler/RuntimeDxe/StatusCodeHandlerRuntimeDxe.inf
   INF MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
   INF ArmPkg/Drivers/CpuDxe/CpuDxe.inf
+  INF camelliaPkg/Drivers/CamelliaBootMemoryDxe/CamelliaBootMemoryDxe.inf
+!if $(USE_CUSTOM_DISPLAY_DRIVER) == 0
+  INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
+!endif
   INF ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.inf
   INF EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
   INF ArmPkg/Drivers/TimerDxe/TimerDxe.inf
@@ -18,10 +22,6 @@ APRIORI DXE {
   INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
 
-  INF MediaTekPkg/Drivers/MsdcDxe/MsdcDxe.inf
-
-  INF MdeModulePkg/Bus/Sd/EmmcDxe/EmmcDxe.inf
-  INF MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
   INF FatPkg/EnhancedFatDxe/Fat.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
   INF MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
@@ -33,14 +33,11 @@ APRIORI DXE {
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
+  INF camelliaPkg/Drivers/CamelliaUniXNULoaderDxe/CamelliaUniXNULoaderDxe.inf
   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
 
-!if $(USE_CUSTOM_DISPLAY_DRIVER) == 0
-  INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
-!endif
   INF SiliciumPkg/Drivers/KeypadDeviceDxe/KeypadDeviceDxe.inf
   INF SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
-
   INF EmbeddedPkg/SimpleTextInOutSerial/SimpleTextInOutSerial.inf
   INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
   INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
