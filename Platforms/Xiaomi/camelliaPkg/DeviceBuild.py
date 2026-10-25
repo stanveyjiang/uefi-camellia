@@ -56,7 +56,7 @@ class SettingsManager (UpdateSettingsManager, SetupSettingsManager, PrEvalSettin
         return CommonPlatform.TargetsSupported
 
     def GetRequiredSubmodules (self):
-        return [
+        required_submodules = [
             RequiredSubmodule ("Binaries", True),
             RequiredSubmodule ("Common/Mu", True),
             RequiredSubmodule ("Common/Mu_OEM_Sample", True),
@@ -64,6 +64,18 @@ class SettingsManager (UpdateSettingsManager, SetupSettingsManager, PrEvalSettin
             RequiredSubmodule ("Silicium-ACPI", True),
             RequiredSubmodule ("Silicon/Silicium/OpensslPkg/Library/OpensslLib/openssl", True)
         ]
+
+        # The self-contained source archive vendors every submodule without
+        # retaining Git metadata. Their contents are already present, so there
+        # is nothing for stuart_setup to resolve.
+        if not os.path.exists (os.path.join (CommonPlatform.WorkspaceRoot, ".git")):
+            if all (
+                os.path.isdir (os.path.join (CommonPlatform.WorkspaceRoot, submodule.path))
+                for submodule in required_submodules
+            ):
+                return []
+
+        return required_submodules
 
     def SetArchitectures (self, list_of_requested_architectures):
         unsupported = set(list_of_requested_architectures) - set(self.GetArchitecturesSupported())

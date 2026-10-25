@@ -81,3 +81,8 @@ FD base in `camellia.toml`; the CPU stack must also move from `0x40000000` to
 `python3-ntp` metadata name mismatch that otherwise aborts
 edk2-pytool-extensions before compilation starts. It is enabled automatically
 by both Camellia build wrappers and by `build_uefi.py`.
+
+The self-contained archive intentionally omits `.git`. When all vendored
+submodule directories are already present, `DeviceBuild.py` skips meaningless
+Git submodule resolution during `stuart_setup`. Git-only and bundle users keep
+the normal submodule workflow.
