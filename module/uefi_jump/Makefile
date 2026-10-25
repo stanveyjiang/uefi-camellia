@@ -1,6 +1,6 @@
 # Out-of-tree build against the locally prepared kernel tree.
-KDIR ?= /home/jiangshihao/kernel-camellia-t-out
-CLANG_DIR ?= /home/jiangshihao/toolchains/clang-r383902/bin
+KDIR ?= /path/to/camellia-linux-output
+CLANG_DIR ?= /path/to/clang/bin
 
 export PATH := $(CLANG_DIR):$(PATH)
 

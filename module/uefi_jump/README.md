@@ -17,8 +17,8 @@ The device now runs the self-built official `camellian-t-oss` (Android 13)
 kernel, version `4.14.186-perf-jiang352`, with `KALLSYMS_ALL=y`. The kernel
 source and build trees are:
 
-- source: `/home/jiangshihao/kernel-camellia-t`
-- build:  `/home/jiangshihao/kernel-camellia-t-out`
+- source: `/path/to/camellia-linux`
+- build:  `/path/to/camellia-linux-output`
 
 Because the module is built against the exact same tree as the running kernel,
 `module_layout` and all symbol CRCs match: **plain `insmod` works, no patch**.
@@ -26,7 +26,8 @@ Because the module is built against the exact same tree as the running kernel,
 ## Build + load (A13, no patch)
 
 ```sh
-make KDIR=/home/jiangshihao/kernel-camellia-t-out
+make KDIR=/path/to/camellia-linux-output \
+     CLANG_DIR=/path/to/clang/bin
 adb push uefi_jump.ko /data/local/tmp/
 adb shell su -c 'insmod /data/local/tmp/uefi_jump.ko'
 adb shell su -c 'dmesg | grep uefi_jump'
