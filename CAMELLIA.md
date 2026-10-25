@@ -77,6 +77,10 @@ dist/SILICIUM_UEFI-hotjump.fd
 The script validates offset `0x1098` and rejects an FD whose C entry is not in
 `0xA0000000..0xA0200000`.
 
+It also checks that the SEC stack setup matches `0xA0200000`. A build that
+changes only the FD base to `0xA0000000` is not a valid hot-jump image: it
+keeps the stack at `0x40000000`, which Android has already occupied.
+
 ## Hardware facts
 
 ```text
@@ -103,6 +107,8 @@ Framebuffer mode    1088 x 7200 x 32 bpp
 - There is no native UFS DXE driver yet.
 - The hot-jump path has a historically intermittent red-screen failure before
   UEFI starts. Use the exact known-good module and FD pair above.
+- The diagnostic `CAFE....` framebuffer probes from bring-up are not part of
+  this clean source snapshot.
 - The RAM disk, trust cache and XNU payload are supplied separately.
 
 ## Source provenance

@@ -29,6 +29,12 @@ git submodule update --init --recursive
 ./build-camellia-hotjump.sh
 ```
 
+Do not build the hot-jump image by changing only `[uefi_fd].base` to
+`0xA0000000`. The UEFI CPU stack must also move to `0xA0200000`;
+`build-camellia-hotjump.sh` performs both changes and verifies the resulting
+FD. A base-only image can enter UEFI and then fail or hang because it reuses
+the Linux-occupied `0x40000000` stack.
+
 ## Validation
 
 The baseline source commit,
@@ -45,6 +51,9 @@ The matching hot-jump module is:
 uefi_jump-mapdiag.ko
 SHA-256 bec844cf909a8032efe33b58c879ba6ff499036263c824672a47afdc9f3a71c6
 ```
+
+The FD and module are a tested pair. Use them together when recovering from a
+failed local build.
 
 See [CAMELLIA.md](CAMELLIA.md) for the exact use and limitations.
 

@@ -1,18 +1,5 @@
-diff --git a/ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.c b/ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.c
-index ecee83fdc5..8b395ff7a8 100644
---- a/ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.c
-+++ b/ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.c
-@@ -74,6 +74,8 @@ InterruptDxeInitialize (
- {
-   EFI_STATUS  Status;
- 
-+  *(volatile UINT32 *)(UINTN)0xA4000904 = 0xCAFE0401;
-+
-   if (!GicV3Supported () && !ArmHasGicV5SystemRegisters ()) {
-     Status = GicV2DxeInitialize (ImageHandle, SystemTable);
-   } else {
 diff --git a/ArmPkg/Drivers/ArmGicDxe/GicV3/ArmGicV3Dxe.c b/ArmPkg/Drivers/ArmGicDxe/GicV3/ArmGicV3Dxe.c
-index 5fd28e3f57..99d461c991 100644
+index 5fd28e3f57..2e788d4038 100644
 --- a/ArmPkg/Drivers/ArmGicDxe/GicV3/ArmGicV3Dxe.c
 +++ b/ArmPkg/Drivers/ArmGicDxe/GicV3/ArmGicV3Dxe.c
 @@ -505,6 +505,7 @@ GicV3IrqInterruptHandler (
@@ -23,7 +10,7 @@ index 5fd28e3f57..99d461c991 100644
      GicV3EndOfInterrupt (&gHardwareInterruptV3Protocol, GicInterrupt);
    }
  }
-@@ -786,6 +787,31 @@ GicV3DxeInitialize (
+@@ -786,6 +787,28 @@ GicV3DxeInitialize (
  
    mGicRedistributorBase = GicGetCpuRedistributorBase (PcdGet64 (PcdGicRedistributorsBase));
  
@@ -32,13 +19,11 @@ index 5fd28e3f57..99d461c991 100644
 +   * SGI/PPI frame configured; accesses to GICR_ISENABLER0 then never
 +   * complete. Wake it and reset the private interrupt frame.
 +   */
-+  *(volatile UINT32 *)(UINTN)0xA40009A0 = 0xCAFE0800;
 +  RegValue = MmioRead32 (mGicRedistributorBase + 0x0014); /* GICR_WAKER */
 +  MmioWrite32 (mGicRedistributorBase + 0x0014, RegValue & ~(UINT32)(1 << 1));
 +  while ((MmioRead32 (mGicRedistributorBase + 0x0014) & (1 << 2)) != 0) {
 +    /* wait for ChildrenAsleep to clear */
 +  }
-+  *(volatile UINT32 *)(UINTN)0xA40009A4 = 0xCAFE0801;
 +
 +  /* Disable all SGIs/PPIs and give them the default priority. */
 +  MmioWrite32 (mGicRedistributorBase + ARM_GICR_CTLR_FRAME_SIZE + ARM_GICR_ICENABLER, 0xffffffff);
@@ -50,100 +35,15 @@ index 5fd28e3f57..99d461c991 100644
 +  for (Index = 0; Index < 32; Index++) {
 +    MmioWrite8 (mGicRedistributorBase + ARM_GICR_CTLR_FRAME_SIZE + ARM_GIC_ICDIPR + Index, ARM_GIC_DEFAULT_PRIORITY);
 +  }
-+  *(volatile UINT32 *)(UINTN)0xA40009A8 = 0xCAFE0802;
 +
    RegValue = ArmGicV3GetControlSystemRegisterEnable ();
    if ((RegValue & ICC_SRE_EL2_SRE) == 0) {
      ArmGicV3SetControlSystemRegisterEnable (RegValue | ICC_SRE_EL2_SRE);
-diff --git a/ArmPkg/Drivers/CpuDxe/CpuDxe.c b/ArmPkg/Drivers/CpuDxe/CpuDxe.c
-index 664cf97370..67ad4a00d4 100644
---- a/ArmPkg/Drivers/CpuDxe/CpuDxe.c
-+++ b/ArmPkg/Drivers/CpuDxe/CpuDxe.c
-@@ -405,6 +405,7 @@ CpuDxeInitialize (
-   IN EFI_SYSTEM_TABLE  *SystemTable
-   )
- {
-+  *(volatile UINT32 *)(UINTN)0xA4000900 = 0xCAFE0400;
-   EFI_STATUS  Status;
-   EFI_EVENT   IdleLoopEvent;
-   EFI_HANDLE  CpuHandle;
 diff --git a/ArmPkg/Drivers/TimerDxe/TimerDxe.c b/ArmPkg/Drivers/TimerDxe/TimerDxe.c
-index b7f5ecca56..d7b31c94ee 100644
+index b7f5ecca56..e6b71fd40d 100644
 --- a/ArmPkg/Drivers/TimerDxe/TimerDxe.c
 +++ b/ArmPkg/Drivers/TimerDxe/TimerDxe.c
-@@ -138,32 +138,43 @@ TimerDriverSetTimerPeriod (
-   UINT64   TimerTicks;
-   EFI_TPL  OriginalTPL;
- 
-+  *(volatile UINT32 *)(UINTN)0xA40009C0 = 0xCAFE0A00;
-+
-   // Always disable the timer
-   ArmGenericTimerDisableTimer ();
-+  *(volatile UINT32 *)(UINTN)0xA40009C4 = 0xCAFE0A01;
- 
-   if (TimerPeriod != 0) {
-     // mTimerTicks = TimerPeriod in 1ms unit x Frequency.10^-3
-     //             = TimerPeriod.10^-4 x Frequency.10^-3
-     //             = (TimerPeriod x Frequency) x 10^-7
--    TimerTicks = TimerPeriod * ArmGenericTimerGetTimerFreq () / 10000000U;
-+    *(volatile UINT32 *)(UINTN)0xA40009C8 = 0xCAFE0A02;
-+    UINT64 TimerFreq = ArmGenericTimerGetTimerFreq ();
-+    *(volatile UINT32 *)(UINTN)0xA40009E4 = 0xCAFE0A09;
-+    TimerTicks = TimerPeriod * TimerFreq / 10000000U;
-+    *(volatile UINT32 *)(UINTN)0xA40009E8 = 0xCAFE0A08;
- 
-     // Raise TPL to update the mTimerTicks and mTimerPeriod to ensure these values
-     // are coherent in the interrupt handler
-     OriginalTPL = gBS->RaiseTPL (TPL_HIGH_LEVEL);
-+    *(volatile UINT32 *)(UINTN)0xA40009CC = 0xCAFE0A03;
- 
-     mTimerTicks    = TimerTicks;
-     mTimerPeriod   = TimerPeriod;
-     mElapsedPeriod = 1;
- 
-     gBS->RestoreTPL (OriginalTPL);
-+    *(volatile UINT32 *)(UINTN)0xA40009D0 = 0xCAFE0A04;
- 
-     // Get value of the current timer
-     CounterValue = ArmGenericTimerGetSystemCount ();
-     // Set the interrupt in Current Time + mTimerTick
-     ArmGenericTimerSetCompareVal (CounterValue + mTimerTicks);
-+    *(volatile UINT32 *)(UINTN)0xA40009D4 = 0xCAFE0A05;
- 
-     // Enable the timer
-     ArmGenericTimerEnableTimer ();
-+    *(volatile UINT32 *)(UINTN)0xA40009D8 = 0xCAFE0A06;
-   } else {
-     // Save the new timer period
-     mTimerPeriod = TimerPeriod;
-@@ -365,14 +376,18 @@ TimerInitialize (
-   UINT32      TimerSecIntrNum;
-   UINT32      TimerIntrNum;
- 
-+  *(volatile UINT32 *)(UINTN)0xA4000970 = 0xCAFE0700;
-+
-   if (ArmIsArchTimerImplemented () == 0) {
-     DEBUG ((DEBUG_ERROR, "ARM Architectural Timer is not available in the CPU, hence can't use this Driver \n"));
-     ASSERT (0);
-   }
-+  *(volatile UINT32 *)(UINTN)0xA4000974 = 0xCAFE0701;
- 
-   // Find the interrupt controller protocol.  ASSERT if not found.
-   Status = gBS->LocateProtocol (&gHardwareInterruptProtocolGuid, NULL, (VOID **)&gInterrupt);
-   ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA4000978 = 0xCAFE0702;
- 
-   // Disable the timer
-   TimerCtrlReg  = ArmGenericTimerGetTimerCtrlReg ();
-@@ -381,6 +396,7 @@ TimerInitialize (
-   ArmGenericTimerSetTimerCtrlReg (TimerCtrlReg);
-   Status = TimerDriverSetTimerPeriod (&gTimer, 0);
-   ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA400097C = 0xCAFE0703;
- 
-   if (ArmHasGicV5SystemRegisters ()) {
-     TimerSecIntrNum  = GICV5_ARCH_TIMER_SEC_INTID;
-@@ -393,18 +409,27 @@ TimerInitialize (
+@@ -393,18 +393,26 @@ TimerInitialize (
      TimerSecIntrNum  = PcdGet32 (PcdArmArchTimerSecIntrNum);
      TimerIntrNum     = PcdGet32 (PcdArmArchTimerIntrNum);
    }
@@ -162,7 +62,6 @@ index b7f5ecca56..d7b31c94ee 100644
 +   * its PPI belong to the interrupted Linux state; this driver uses the
 +   * physical counter and must not claim the virtual source.
 +   */
-+  *(volatile UINT32 *)(UINTN)0xA4000980 = 0xCAFE0704;
  
    //
    // The hypervisor timer interrupt may be omitted by implementations that
@@ -177,37 +76,14 @@ index b7f5ecca56..d7b31c94ee 100644
    if (TimerHypIntrNum != 0) {
      Status = gInterrupt->RegisterInterruptSource (gInterrupt, TimerHypIntrNum, TimerInterruptHandler);
      ASSERT_EFI_ERROR (Status);
-@@ -412,13 +437,17 @@ TimerInitialize (
+@@ -412,6 +420,7 @@ TimerInitialize (
  
    Status = gInterrupt->RegisterInterruptSource (gInterrupt, TimerSecIntrNum, TimerInterruptHandler);
    ASSERT_EFI_ERROR (Status);
 +  #endif
-+  *(volatile UINT32 *)(UINTN)0xA4000984 = 0xCAFE0705;
  
    Status = gInterrupt->RegisterInterruptSource (gInterrupt, TimerIntrNum, TimerInterruptHandler);
    ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA4000988 = 0xCAFE0706;
- 
-   // Set up default timer
-   Status = TimerDriverSetTimerPeriod (&gTimer, FixedPcdGet32 (PcdTimerPeriod)); // TIMER_DEFAULT_PERIOD
-   ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA400098C = 0xCAFE0707;
- 
-   Handle = NULL;
-   // Install the Timer Architectural Protocol onto a new handle
-@@ -429,10 +458,12 @@ TimerInitialize (
-                   NULL
-                   );
-   ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA4000990 = 0xCAFE0708;
- 
-   // Everything is ready, unmask and enable timer interrupts
-   TimerCtrlReg = ARM_ARCH_TIMER_ENABLE;
-   ArmGenericTimerSetTimerCtrlReg (TimerCtrlReg);
-+  *(volatile UINT32 *)(UINTN)0xA4000994 = 0xCAFE0709;
- 
-   // Register for an ExitBootServicesEvent
-   Status = gBS->CreateEvent (EVT_SIGNAL_EXIT_BOOT_SERVICES, TPL_NOTIFY, ExitBootServicesEvent, NULL, &EfiExitBootServicesEvent);
 diff --git a/ArmPkg/Include/Library/ArmGicLib.h b/ArmPkg/Include/Library/ArmGicLib.h
 index f50128ed80..4da3554180 100644
 --- a/ArmPkg/Include/Library/ArmGicLib.h
@@ -221,191 +97,11 @@ index f50128ed80..4da3554180 100644
  
  // GIC Cpu interface
  #define ARM_GIC_ICCICR   0x00         // CPU Interface Control Register
-diff --git a/ArmPlatformPkg/PeilessSec/PeilessSec.c b/ArmPlatformPkg/PeilessSec/PeilessSec.c
-index dc6b8d6047..184fff22d9 100644
---- a/ArmPlatformPkg/PeilessSec/PeilessSec.c
-+++ b/ArmPlatformPkg/PeilessSec/PeilessSec.c
-@@ -121,6 +121,7 @@ SecMain (
- 
-   // Initialize the architecture specific bits
-   ArchInitialize ();
-+  *(volatile UINT32 *)(UINTN)0xA4000820 = 0xCAFE0100;
- 
-   // Initialize the Serial Port
-   SerialPortInitialize ();
-@@ -133,6 +134,7 @@ SecMain (
-                 __DATE__
-                 );
-   SerialPortWrite ((UINT8 *)Buffer, CharCount);
-+  *(volatile UINT32 *)(UINTN)0xA4000824 = 0xCAFE0101;
- 
-   // Initialize the Debug Agent for Source Level Debugging
-   InitializeDebugAgent (DEBUG_AGENT_INIT_POSTMEM_SEC, NULL, NULL);
-@@ -146,9 +148,12 @@ SecMain (
-               (VOID *)StackBase // The top of the UEFI Memory is reserved for the stack
-               );
-   PrePeiSetHobList (HobList);
-+  *(volatile UINT32 *)(UINTN)0xA4000828 = 0xCAFE0102;
- 
-   // Initialize MMU and Memory HOBs (Resource Descriptor HOBs)
-+  *(volatile UINT32 *)(UINTN)0xA400082C = 0xCAFE0103;
-   Status = MemoryPeim (UefiMemoryBase, FixedPcdGet32 (PcdSystemMemoryUefiRegionSize));
-+  *(volatile UINT32 *)(UINTN)0xA4000830 = 0xCAFE0104;
-   ASSERT_EFI_ERROR (Status);
- 
-   // Create the Stacks HOB
-@@ -157,6 +162,7 @@ SecMain (
- 
-   // TODO: Call CpuPei as a library
-   BuildCpuHob (ArmGetPhysicalAddressBits (), PcdGet8 (PcdPrePiCpuIoSize));
-+  *(volatile UINT32 *)(UINTN)0xA4000834 = 0xCAFE0105;
- 
-   if (ArmIsMpCore ()) {
-     // Only MP Core platform need to produce gArmMpCoreInfoPpiGuid
-@@ -203,7 +209,9 @@ SecMain (
-   SetBootMode (ArmPlatformGetBootMode ());
- 
-   // Initialize Platform HOBs (CpuHob and FvHob)
-+  *(volatile UINT32 *)(UINTN)0xA4000838 = 0xCAFE0106;
-   Status = PlatformPeim ();
-+  *(volatile UINT32 *)(UINTN)0xA400083C = 0xCAFE0107;
-   ASSERT_EFI_ERROR (Status);
- 
-   // Now, the HOB List has been initialized, we can register performance information
-@@ -214,7 +222,9 @@ SecMain (
- 
-   // MU_CHANGE [BEGIN] - Add Tpm2StartupInit call
-   // Initialize the TPM before loading the DXE core
-+  *(volatile UINT32 *)(UINTN)0xA4000840 = 0xCAFE0108;
-   Status = Tpm2StartupInit ();
-+  *(volatile UINT32 *)(UINTN)0xA4000844 = 0xCAFE0109;
- 
-   /* NOTE: EFI_UNSUPPORTED is treated as a success due to the possibility of there
-    *       not being a TPM on the system and if so, the NULL instance of the startup
-@@ -229,12 +239,15 @@ SecMain (
-   // MU_CHANGE [END]
- 
-   // Decompress firmware volumes and load the DXE Core
-+  *(volatile UINT32 *)(UINTN)0xA4000848 = 0xCAFE010A;
-   DecompressFvsUntilDxeCoreFound ();
-+  *(volatile UINT32 *)(UINTN)0xA400084C = 0xCAFE010B;
- 
-   Status = MeasurePeilessSec ();
-   ASSERT_EFI_ERROR (Status);
- 
-   // Load the DXE Core and transfer control to it
-+  *(volatile UINT32 *)(UINTN)0xA4000850 = 0xCAFE010C;
-   Status = LoadDxeCoreFromFv (NULL, 0);
-   DEBUG ((DEBUG_ERROR, "Failed to load DXE Core from any FV\n"));
-   ASSERT_EFI_ERROR (Status);
-@@ -256,6 +269,9 @@ CEntryPoint (
- {
-   UINT64  StartTimeStamp;
- 
-+  // Camellia: progress beacon for the Linux-to-UEFI handoff bring-up.
-+  *(volatile UINT32 *)(UINTN)0xA4000800 = 0xCAFE0010;
-+
-   // Initialize the platform specific controllers
-   ArmPlatformInitialize (ArmReadMpidr ());
- 
-diff --git a/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c b/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c
-index 4c9df94b3a..28dce601cb 100644
---- a/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c
-+++ b/MdeModulePkg/Core/Dxe/Dispatcher/Dispatcher.c
-@@ -453,6 +453,15 @@ CoreDispatcher (
-       //
-       if ((DriverEntry->ImageHandle == NULL) && !DriverEntry->IsFvImage) {
-         DEBUG ((DEBUG_INFO, "Loading driver %g\n", &DriverEntry->FileName));
-+        {
-+          UINT32 *Src = (UINT32 *)(UINTN)&DriverEntry->FileName;
-+          UINT32 *Dst = (UINT32 *)(UINTN)0xA4000930;
-+          Dst[0] = Src[0];
-+          Dst[1] = Src[1];
-+          Dst[2] = Src[2];
-+          Dst[3] = Src[3];
-+        }
-+        *(volatile UINT32 *)(UINTN)0xA4000920 = 0xCAFE0500;
-         Status = CoreLoadImage (
-                    FALSE,
-                    gDxeCoreImageHandle,
-@@ -493,6 +502,7 @@ CoreDispatcher (
-           //
-           continue;
-         }
-+        *(volatile UINT32 *)(UINTN)0xA4000924 = 0xCAFE0501;
-       }
- 
-       CoreAcquireDispatcherLock ();
-@@ -517,6 +527,15 @@ CoreDispatcher (
-           );
-         ASSERT (DriverEntry->ImageHandle != NULL);
- 
-+        {
-+          UINT32 *Src = (UINT32 *)(UINTN)&DriverEntry->FileName;
-+          UINT32 *Dst = (UINT32 *)(UINTN)0xA4000930;
-+          Dst[0] = Src[0];
-+          Dst[1] = Src[1];
-+          Dst[2] = Src[2];
-+          Dst[3] = Src[3];
-+        }
-+        *(volatile UINT32 *)(UINTN)0xA4000928 = 0xCAFE0502;
-         Status = CoreStartImage (DriverEntry->ImageHandle, NULL, NULL);
- 
-         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
 diff --git a/MdeModulePkg/Core/Dxe/DxeMain/DxeMain.c b/MdeModulePkg/Core/Dxe/DxeMain/DxeMain.c
-index 3c20568655..59bb48c8e1 100644
+index 3c20568655..7477a1dc06 100644
 --- a/MdeModulePkg/Core/Dxe/DxeMain/DxeMain.c
 +++ b/MdeModulePkg/Core/Dxe/DxeMain/DxeMain.c
-@@ -246,6 +246,8 @@ DxeMain (
-   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
-   VOID                          *EntryPoint;
- 
-+  *(volatile UINT32 *)(UINTN)0xA40008A0 = 0xCAFE0300;
-+
-   //
-   // Setup the default exception handlers
-   //
-@@ -257,6 +259,7 @@ DxeMain (
- 
-   Status = InitializeCpuExceptionHandlers (VectorInfoList);
-   ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA40008A4 = 0xCAFE0301;
- 
-   //
-   // Setup Exception Stack
-@@ -273,6 +276,7 @@ DxeMain (
-   // Initialize Memory Services
-   //
-   CoreInitializeMemoryServices (&HobStart, &MemoryBaseAddress, &MemoryLength);
-+  *(volatile UINT32 *)(UINTN)0xA40008A8 = 0xCAFE0302;
- 
-   MemoryProfileInit (HobStart);
- 
-@@ -281,6 +285,7 @@ DxeMain (
-   //
-   Status = CoreInitializeHandleServices ();
-   ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA40008AC = 0xCAFE0303;
- 
-   //
-   // Start the Image Services.
-@@ -296,6 +301,7 @@ DxeMain (
-   //
-   Status = CoreInitializeGcdServices (&HobStart, MemoryBaseAddress, MemoryLength);
-   ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA40008B0 = 0xCAFE0304;
- 
-   //
-   // Allocate the EFI System Table and EFI Runtime Service Table from EfiRuntimeServicesData
-@@ -318,6 +324,7 @@ DxeMain (
-   // Call constructor for all libraries
-   //
-   ProcessLibraryConstructorList (gDxeCoreImageHandle, gDxeCoreST);
-+  *(volatile UINT32 *)(UINTN)0xA40008B4 = 0xCAFE0305;
-   PERF_CROSSMODULE_END ("PEI");
-   PERF_CROSSMODULE_BEGIN ("DXE");
- 
-@@ -398,11 +405,11 @@ DxeMain (
+@@ -398,11 +398,11 @@ DxeMain (
      gDxeCoreImageHandle
      );
  
@@ -418,7 +114,7 @@ index 3c20568655..59bb48c8e1 100644
    for (Hob.Raw = HobStart; !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
      if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_MEMORY_ALLOCATION) {
        DEBUG ((
-@@ -414,6 +421,7 @@ DxeMain (
+@@ -414,6 +414,7 @@ DxeMain (
          ));
      }
    }
@@ -426,117 +122,6 @@ index 3c20568655..59bb48c8e1 100644
  
    for (Hob.Raw = HobStart; !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
      if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV) {
-@@ -463,6 +471,7 @@ DxeMain (
-   //
-   Status = CoreInitializeEventServices ();
-   ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA40008B8 = 0xCAFE0306;
- 
-   //
-   // Give the debug agent a chance to initialize with events.
-@@ -538,16 +547,20 @@ DxeMain (
-   //
-   Status = InitializeSectionExtraction (gDxeCoreImageHandle, gDxeCoreST);
-   ASSERT_EFI_ERROR (Status);
-+  *(volatile UINT32 *)(UINTN)0xA40008BC = 0xCAFE0307;
- 
-   //
-   // Initialize the DXE Dispatcher
-   //
-   CoreInitializeDispatcher ();
-+  *(volatile UINT32 *)(UINTN)0xA40008C0 = 0xCAFE0308;
- 
-   //
-   // Invoke the DXE Dispatcher
-   //
-+  *(volatile UINT32 *)(UINTN)0xA40008C4 = 0xCAFE0309;
-   CoreDispatcher ();
-+  *(volatile UINT32 *)(UINTN)0xA40008C8 = 0xCAFE030A;
- 
-   //
-   // Display Architectural protocols that were not loaded if this is DEBUG build
-diff --git a/MdeModulePkg/Core/Dxe/Image/Image.c b/MdeModulePkg/Core/Dxe/Image/Image.c
-index eb2ce42264..7e2c62831f 100644
---- a/MdeModulePkg/Core/Dxe/Image/Image.c
-+++ b/MdeModulePkg/Core/Dxe/Image/Image.c
-@@ -602,6 +602,8 @@ CoreLoadPeImage (
-   UINTN       StartIndex;
-   CHAR8       EfiFileName[512];
- 
-+  *(volatile UINT32 *)(UINTN)0xA4000954 = 0xCAFE0610;
-+
-   ZeroMem (&Image->ImageContext, sizeof (Image->ImageContext));
- 
-   Image->ImageContext.Handle    = Pe32Handle;
-@@ -610,10 +612,12 @@ CoreLoadPeImage (
-   //
-   // Get information about the image being loaded
-   //
-+  *(volatile UINT32 *)(UINTN)0xA4000958 = 0xCAFE0611;
-   Status = PeCoffLoaderGetImageInfo (&Image->ImageContext);
-   if (EFI_ERROR (Status)) {
-     return Status;
-   }
-+  *(volatile UINT32 *)(UINTN)0xA400095C = 0xCAFE0612;
- 
-   if (!CoreIsImageTypeSupported (Image)) {
-     //
-@@ -783,6 +787,7 @@ CoreLoadPeImage (
-   //
-   // Load the image from the file into the allocated memory
-   //
-+  *(volatile UINT32 *)(UINTN)0xA4000960 = 0xCAFE0613;
-   Status = PeCoffLoaderLoadImage (&Image->ImageContext);
-   if (EFI_ERROR (Status)) {
-     goto Done;
-@@ -806,10 +811,12 @@ CoreLoadPeImage (
-   //
-   // Relocate the image in memory
-   //
-+  *(volatile UINT32 *)(UINTN)0xA4000964 = 0xCAFE0614;
-   Status = PeCoffLoaderRelocateImage (&Image->ImageContext);
-   if (EFI_ERROR (Status)) {
-     goto Done;
-   }
-+  *(volatile UINT32 *)(UINTN)0xA4000968 = 0xCAFE0615;
- 
-   //
-   // Flush the Instruction Cache
-@@ -1200,6 +1207,8 @@ CoreLoadImageCommon (
- 
-   SecurityStatus = EFI_SUCCESS;
- 
-+  *(volatile UINT32 *)(UINTN)0xA4000940 = 0xCAFE0600;
-+
-   ASSERT (gEfiCurrentTpl < TPL_NOTIFY);
-   ParentImage = NULL;
- 
-@@ -1278,6 +1287,7 @@ CoreLoadImageCommon (
-     //
-     // Get the source file buffer by its device path.
-     //
-+    *(volatile UINT32 *)(UINTN)0xA4000944 = 0xCAFE0601;
-     FHand.Source = GetFileBufferByFilePath (
-                      BootPolicy,
-                      FilePath,
-@@ -1306,6 +1316,7 @@ CoreLoadImageCommon (
-     Image = NULL;
-     goto Done;
-   }
-+  *(volatile UINT32 *)(UINTN)0xA4000948 = 0xCAFE0602;
- 
-   if (gSecurity2 != NULL) {
-     //
-@@ -1417,7 +1428,9 @@ CoreLoadImageCommon (
-   //
-   // Load the image.  If EntryPoint is Null, it will not be set.
-   //
-+  *(volatile UINT32 *)(UINTN)0xA400094C = 0xCAFE0603;
-   Status = CoreLoadPeImage (BootPolicy, &FHand, Image, DstBuffer, EntryPoint, Attribute);
-+  *(volatile UINT32 *)(UINTN)0xA4000950 = 0xCAFE0604;
-   if (EFI_ERROR (Status)) {
-     if ((Status == EFI_BUFFER_TOO_SMALL) || (Status == EFI_OUT_OF_RESOURCES)) {
-       if (NumberOfPages != NULL) {
 diff --git a/UefiCpuPkg/Library/CpuExceptionHandlerLib/AArch64/CpuExceptionHandlerLib.c b/UefiCpuPkg/Library/CpuExceptionHandlerLib/AArch64/CpuExceptionHandlerLib.c
 index 9116ba9d96..8ab37ee39c 100644
 --- a/UefiCpuPkg/Library/CpuExceptionHandlerLib/AArch64/CpuExceptionHandlerLib.c

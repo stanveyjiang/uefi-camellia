@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+export PYTHONPATH="$ROOT/.build-support${PYTHONPATH:+:$PYTHONPATH}"
 if [[ -d /usr/lib/llvm-18/bin ]]; then
 	export PATH=/usr/lib/llvm-18/bin:$PATH
 fi

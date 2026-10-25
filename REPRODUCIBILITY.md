@@ -69,4 +69,15 @@ platform source and submodule revisions are the compatibility contract.
 `build_uefi.py` applies `Resources/MuPatches/Camellia-Essential.patch` after
 the five upstream Mu compatibility patches. This patch contains the hardware
 bring-up changes that were previously present only as uncommitted local
-changes in `Mu_Basecore`.
+changes in `Mu_Basecore`. The published patch keeps the GIC, timer, DXE and
+exception-handling fixes, but excludes the `CAFE....` framebuffer probe writes
+used during bring-up.
+
+For a hot-jump image, use `build-camellia-hotjump.sh`. Do not change only the
+FD base in `camellia.toml`; the CPU stack must also move from `0x40000000` to
+`0xA0200000`, otherwise early UEFI startup is not reliable.
+
+`.build-support/sitecustomize.py` is a narrow workaround for the Ubuntu
+`python3-ntp` metadata name mismatch that otherwise aborts
+edk2-pytool-extensions before compilation starts. It is enabled automatically
+by both Camellia build wrappers and by `build_uefi.py`.

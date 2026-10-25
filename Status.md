@@ -19,6 +19,8 @@
   `bec844cf909a8032efe33b58c879ba6ff499036263c824672a47afdc9f3a71c6`.
 - SEC/DXE/GOP, scatter-page framebuffer shadow, RAM-disk publication,
   UniXNU and DarwinBoot startup.
+- The current source build path uses `build-camellia-hotjump.sh`, which moves
+  both the FD base and the UEFI CPU stack.
 
 ## Not yet production
 
@@ -27,6 +29,8 @@
 - Production ACPI tables.
 - A stable cold-boot BootShim chain.
 - Production display, touch, GPU and USB support.
+- Bring-up-only `CAFE....` progress probes, which are intentionally excluded
+  from the clean source package.
 
 See [CAMELLIA.md](CAMELLIA.md) for build instructions and known-good artifact
 details.

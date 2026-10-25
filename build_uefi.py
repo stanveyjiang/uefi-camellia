@@ -14,6 +14,11 @@ import argparse
 import logging
 import tomllib
 
+BUILD_SUPPORT_PATH = Path (__file__).resolve ().parent / ".build-support"
+os.environ["PYTHONPATH"] = str (BUILD_SUPPORT_PATH) + (
+    ":" + os.environ["PYTHONPATH"] if os.environ.get ("PYTHONPATH") else ""
+)
+
 #
 # Logger
 #
