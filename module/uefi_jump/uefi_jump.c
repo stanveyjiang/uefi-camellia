@@ -64,6 +64,9 @@ MODULE_VERSION("0.4-stable-handoff");
 #define CONTIG_FB_IOVA		0x80000000UL
 #define FB_BEACON_ADDR		0xA4000800UL
 #define FB_HANDOFF_MAGIC	0x3130424649464555ULL /* "UEFIFB01" LE */
+#define JUMP_TRACE_BASE		0x48081800UL
+#define JUMP_TRACE_SIZE		0x1000UL
+#define JUMP_TRACE_MAGIC	0x3145434152544a55ULL /* "UJTRACE1" LE */
 
 struct fb_handoff {
 	__le64 magic;
@@ -96,6 +99,16 @@ struct payload_handoff {
 	__le32 reserved;
 };
 
+struct jump_trace_record {
+	__le64 magic;
+	__le64 magic_inverse;
+	__le64 stage;
+	__le64 stage_inverse;
+	__le64 detail;
+	__le64 counter;
+	__le64 reserved[2];
+};
+
 typedef int (*memblock_reserve_t)(phys_addr_t base, phys_addr_t size);
 typedef void (*flush_dcache_t)(void *addr, size_t size);
 typedef void (*smp_send_stop_t)(void);
@@ -104,6 +117,29 @@ static __nocfi void do_flush_dcache(flush_dcache_t fn, void *addr,
 				    size_t size)
 {
 	fn(addr, size);
+}
+
+static void write_jump_trace(void *trace, unsigned int index,
+			     u64 stage, u64 detail,
+			     flush_dcache_t flush_dcache)
+{
+	struct jump_trace_record *record;
+	u64 counter;
+
+	if (!trace || index >= JUMP_TRACE_SIZE / sizeof(*record))
+		return;
+	record = (struct jump_trace_record *)trace + index;
+	memset(record, 0, sizeof(*record));
+	record->magic = cpu_to_le64(JUMP_TRACE_MAGIC);
+	record->magic_inverse = cpu_to_le64(~JUMP_TRACE_MAGIC);
+	record->stage = cpu_to_le64(stage);
+	record->stage_inverse = cpu_to_le64(~stage);
+	record->detail = cpu_to_le64(detail);
+	asm volatile("isb; mrs %0, cntpct_el0" : "=r"(counter));
+	record->counter = cpu_to_le64(counter);
+	asm volatile("dsb sy; isb" : : : "memory");
+	if (flush_dcache)
+		do_flush_dcache(flush_dcache, record, sizeof(*record));
 }
 
 static char *fd_path = "/data/local/tmp/uefi.fd";
@@ -1035,6 +1071,7 @@ static int __init uefi_jump_init(void)
 	void *buf;
 	void *payload_buf = NULL;
 	void *map;
+	void *jump_trace;
 	u32 crc_src, crc_dst;
 	const unsigned char *head;
 	bool fb_ready;
@@ -1316,6 +1353,9 @@ static int __init uefi_jump_init(void)
 		vfree(buf);
 		return -ENOMEM;
 	}
+	jump_trace = memremap(JUMP_TRACE_BASE, JUMP_TRACE_SIZE, MEMREMAP_WB);
+	if (!jump_trace)
+		pr_warn("uefi_jump: cannot map the persistent jump trace\n");
 
 	memcpy(map, buf, FD_SIZE);
 	crc_src = crc32_le(~0, buf, FD_SIZE);
@@ -1446,6 +1486,7 @@ static int __init uefi_jump_init(void)
 	}
 
 	pr_info("uefi_jump: final handoff prepared, entering the jump critical section\n");
+	write_jump_trace(jump_trace, 0, 1, FD_BASE, flush_dcache);
 
 	/*
 	 * Stop the other CPUs before the last copy.  With the destination mapping
@@ -1464,13 +1505,18 @@ static int __init uefi_jump_init(void)
 	    (head[FV_SIG_OFFSET + 1] != 'F') ||
 	    (head[FV_SIG_OFFSET + 2] != 'V') ||
 	    (head[FV_SIG_OFFSET + 3] != 'H')) {
+		write_jump_trace(jump_trace, 1, 2, crc_dst,
+		    flush_dcache);
 		for (;;)
 			asm volatile("wfe");
 	}
+	write_jump_trace(jump_trace, 1, 3, crc_dst, flush_dcache);
 	if (flush_dcache)
 		do_flush_dcache(flush_dcache, map, FD_SIZE);
 
 	disable_arch_timers();
+	asm volatile("dsb sy; isb" : : : "memory");
+	write_jump_trace(jump_trace, 2, 4, FD_BASE, flush_dcache);
 	asm volatile("dsb sy; isb" : : : "memory");
 	camellia_jump_to(FD_BASE);
 
