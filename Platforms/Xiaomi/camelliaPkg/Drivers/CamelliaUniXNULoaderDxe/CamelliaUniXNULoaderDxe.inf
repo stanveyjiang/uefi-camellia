@@ -1,0 +1,34 @@
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = CamelliaUniXNULoaderDxe
+  FILE_GUID                      = 1BCCB4B8-E224-4FA2-84E5-64C05C21E352
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = CamelliaUniXNULoaderEntry
+
+[Sources]
+  CamelliaUniXNULoaderDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiBlockIoProtocolGuid                       ## CONSUMES
+  gEfiDevicePathProtocolGuid                    ## PRODUCES
+  gEfiDiskIoProtocolGuid                        ## CONSUMES
+  gEfiFirmwareVolume2ProtocolGuid               ## CONSUMES
+  gEfiGraphicsOutputProtocolGuid                ## CONSUMES
+  gEfiLoadedImageProtocolGuid                   ## CONSUMES
+  gEfiSimpleFileSystemProtocolGuid              ## CONSUMES
+
+[Depex]
+  gEfiGraphicsOutputProtocolGuid

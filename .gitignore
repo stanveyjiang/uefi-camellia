@@ -1,0 +1,14 @@
+__pycache__
+.vscode
+.venv
+Build
+Conf
+dist
+.cache
+
+bootpayload.bin
+BootShim.bin
+BootShim.elf
+
+Mu-*.*
+*:Zone.Identifier

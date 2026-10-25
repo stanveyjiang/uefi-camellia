@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Function to display Help Message
+function _help(){
+    echo "Usage: setup_env.sh -p <Package Manager>"
+    echo
+    echo "Install all needed Packages."
+    echo
+    echo "Options:"
+    echo "  --package-manager PAK, -p PAK:   Chose what Package Manager you use."
+    echo "  --help, -h:                      Shows this Help."
+    echo 
+    echo "MainPage: https://github.com/Project-Silicium/Mu-Silicium"
+    exit 1
+}
+
+# Functions to display the Message Type (Error or Warning)
+function _error(){ echo -e "\033[1;31m${@}\033[0m" >&2;exit 1; }
+function _warn(){ echo -e "\033[0;33m${@}\033[0m" >&2;exit 1; }
+
+# Check if any args were given
+OPTS="$(getopt -o p:hfacACDO: -l package-manager:,help -n 'setup_env.sh' -- "$@")"||exit 1
+eval set -- "${OPTS}"
+while true
+do  case "${1}" in
+        -p|--package-manager) PAK="${2}";shift 2;;
+        -h|--help) _help 0;shift;;
+        --) shift;break;;
+        *) _help 1;;
+    esac
+done
+
+# If no Package Manager arg is present, Display Help Message
+if [[ -z ${PAK} ]]
+then _help
+fi
+
+# Install all needed Packages
+if [[ ${PAK} = apt ]]; then
+    if [[ $CI_BUILD == "true" ]]; then
+        # Update CI Ubuntu
+        sudo apt update
+        sudo apt full-upgrade -y
+    fi
+    sudo apt install -y pip git mono-devel build-essential lld uuid-dev nasm gcc-aarch64-linux-gnu python3 python3-git python3-pip gettext locales gnupg ca-certificates python3-venv git git-core clang llvm curl lld||_error "\nFailed to install Packages!\n"
+elif [[ ${PAK} = dnf ]]; then
+    sudo dnf install -y git mono-devel nuget nasm make lld gcc automake gcc-aarch64-linux-gnu python3 python3-pip gettext gnupg ca-certificates git git-core clang llvm curl lld||_error "\nFailed to install Packages!\n"
+elif [[ ${PAK} = pacman ]]; then
+    sudo pacman -Syu --needed git mono base-devel nuget lld nasm aarch64-linux-gnu-gcc python3 python python-distutils-extra python-pip gettext gnupg ca-certificates python-virtualenv python-pipenv clang llvm curl lld||_error "\nFailed to install Packages!\n"
+
+    # Clone UUID Package
+    git clone https://aur.archlinux.org/uuid.git
+
+    # Compile & Install UUID Package
+    pushd uuid &> /dev/null
+    makepkg -sic
+    popd &> /dev/null
+
+    # Delete UUID Package
+    rm -rf uuid &> /dev/null
+else
+    _error "\nInvaild Package Manager!\nAvailbe Package Managers: apt, dnf and pacman\n"
+fi
+
+# Install Needed Python Packages
+python3 -m pip install -r pip-requirements.txt ||python3 -m pip install -r pip-requirements.txt --break-system-packages||_error "\nFailed to install Pip Packages!\n"
+
+export CLANGPDB_AARCH64_PREFIX=aarch64-linux-gnu-
