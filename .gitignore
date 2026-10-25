@@ -5,6 +5,7 @@ Build
 Conf
 dist
 .cache
+BootImage/build
 
 bootpayload.bin
 BootShim.bin

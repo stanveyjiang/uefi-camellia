@@ -13,6 +13,7 @@ DarwinBoot binaries are not bundled.
 
 - [Camellia platform and build guide](CAMELLIA.md)
 - [Detailed Chinese porting and maintenance guide](GUIDE.zh-CN.md)
+- [Boot image packaging and validation](BOOT-IMAGE.zh-CN.md)
 - [Dependencies and debugging map](DEPENDENCIES.md)
 - [Pinned source revisions](REPRODUCIBILITY.md)
 - [Upstream build documentation](Building.md)

@@ -23,10 +23,11 @@ SoC: MediaTek MT6833 / Dimensity 700
 
 ## 2. 启动链
 
-当前验证路径是 Android/Linux 热跳，不是由 LK 直接冷启动：
+当前验证路径是 Linux 侧热跳，不是由 LK 直接执行自建 BootShim/UEFI：
 
 ```text
-Android Linux
+Android Linux（ADB 调试）
+  或 LK -> Linux -> 最小 initramfs（boot image 路线）
   -> drm_linear 建立线性 framebuffer
   -> uefi_jump.ko 复制 FD 并建立 framebuffer handoff
   -> UEFI SEC / PEI / DXE
@@ -55,6 +56,9 @@ UEFI stack    0xA0200000
 ```
 
 不要手工拼装一个只改 base 的热跳 FD。
+
+完整的 boot image 打包参数、已验证路线、失败路线、刷写和恢复步骤见
+[BOOT-IMAGE.zh-CN.md](BOOT-IMAGE.zh-CN.md)。
 
 ## 3. Camellia 相关改动
 
