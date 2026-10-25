@@ -2,11 +2,6 @@ name: Build camellia UEFI skeleton
 
 on:
   workflow_dispatch:
-    inputs:
-      fd_base:
-        description: UEFI FD base (0x40080000 cold boot, 0xA0000000 Linux hot jump)
-        required: true
-        default: "0x40080000"
   push:
     branches: ["main", "camellia"]
     paths:
@@ -28,23 +23,19 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build camellia UEFI
-        env:
-          FD_BASE: ${{ inputs.fd_base }}
         run: |
           export PATH=/usr/lib/llvm-18/bin:$PATH
-          if [ -n "$FD_BASE" ]; then
-            sed -i "s|^base = 0x40080000$|base = ${FD_BASE}|" Resources/Configs/camellia.toml
-          fi
           bash ./setup_env.sh -p apt
-          python3 build_uefi.py -d camellia -r DEBUG
+          ./build-camellia-hotjump.sh -c
+          ./build-camellia-coldboot.sh
 
       - name: Upload camellia UEFI artifacts
         uses: actions/upload-artifact@v4
         with:
           name: uefi-camellia-debug-skeleton
           path: |
-            Mu-camellia.img
-            Build/camelliaPkg/**/FV/**
+            dist/SILICIUM_UEFI-hotjump.fd
+            dist/SILICIUM_UEFI-coldboot.fd
             Platforms/Xiaomi/camelliaPkg/PORTING.md
           if-no-files-found: error
           compression-level: 9
