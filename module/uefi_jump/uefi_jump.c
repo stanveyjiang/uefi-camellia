@@ -26,6 +26,7 @@
 #include <linux/io.h>
 #include <asm/io.h>
 #include <linux/crc32.h>
+#include <linux/irqflags.h>
 #include <linux/vmalloc.h>
 #include <linux/platform_device.h>
 #include <linux/iommu.h>
@@ -33,7 +34,7 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("jiangshihao");
 MODULE_DESCRIPTION("UEFI jump - stage 2: place FD at 0xA0000000 and maybe jump");
-MODULE_VERSION("0.3");
+MODULE_VERSION("0.4-stable-handoff");
 
 #define FD_BASE		0xA0000000UL
 #define FD_SIZE		0x200000UL
@@ -1342,8 +1343,11 @@ static int __init uefi_jump_init(void)
 		}
 	}
 
-	memunmap(map);
-	vfree(buf);
+	if (!jump) {
+		memunmap(map);
+		vfree(buf);
+		buf = NULL;
+	}
 
 	if (!jump && !copy_payload_only) {
 		pr_info("uefi_jump: ready at 0x%lx (jump=0, not jumping)\n",
@@ -1408,36 +1412,17 @@ static int __init uefi_jump_init(void)
 
 	if (!fb_ready) {
 		pr_err("uefi_jump: no framebuffer handoff (screen off?), refusing to jump\n");
+		memunmap(map);
+		vfree(buf);
 		return -EAGAIN;
 	}
 
 	stop = (smp_send_stop_t)kallsyms_lookup_name("smp_send_stop");
 	if (!stop) {
 		pr_err("uefi_jump: cannot resolve smp_send_stop\n");
+		memunmap(map);
+		vfree(buf);
 		return -ENOENT;
-	}
-
-	pr_info("uefi_jump: stopping secondary CPUs, jumping to 0x%lx now\n",
-		FD_BASE);
-	stop();
-
-	/* Re-capture the live framebuffer now that the other CPUs are stopped. */
-	fb_ready = probe_display_regs(flush_dcache);
-	{
-		void *ho = memremap(FB_HANDOFF_ADDR, 0x1000, MEMREMAP_WB);
-		if (ho) {
-			if (flush_dcache)
-				do_flush_dcache(flush_dcache, ho, 0x1000);
-			memunmap(ho);
-		}
-	}
-	if (!fb_ready) {
-		pr_err("uefi_jump: no framebuffer handoff after SMP stop, refusing to jump\n");
-		return -EAGAIN;
-	}
-	if (!write_fb_page_map(flush_dcache)) {
-		pr_err("uefi_jump: cannot build fb page map, refusing to jump\n");
-		return -(fb_map_error ? fb_map_error : 208);
 	}
 
 	{
@@ -1460,7 +1445,33 @@ static int __init uefi_jump_init(void)
 		}
 	}
 
+	pr_info("uefi_jump: final handoff prepared, entering the jump critical section\n");
+
+	/*
+	 * Stop the other CPUs before the last copy.  With the destination mapping
+	 * retained above, the remaining work is only memcpy, CRC and cache flush;
+	 * no allocator, IOMMU, logging or lock-taking subsystem runs after SMP stop.
+	 */
+	stop();
+	local_irq_disable();
+	local_fiq_disable();
+
+	memcpy(map, buf, FD_SIZE);
+	crc_dst = crc32_le(~0, map, FD_SIZE);
+	head = (const unsigned char *)map;
+	if ((crc_dst != crc_src) ||
+	    (head[FV_SIG_OFFSET + 0] != '_') ||
+	    (head[FV_SIG_OFFSET + 1] != 'F') ||
+	    (head[FV_SIG_OFFSET + 2] != 'V') ||
+	    (head[FV_SIG_OFFSET + 3] != 'H')) {
+		for (;;)
+			asm volatile("wfe");
+	}
+	if (flush_dcache)
+		do_flush_dcache(flush_dcache, map, FD_SIZE);
+
 	disable_arch_timers();
+	asm volatile("dsb sy; isb" : : : "memory");
 	camellia_jump_to(FD_BASE);
 
 	/* not reached */
