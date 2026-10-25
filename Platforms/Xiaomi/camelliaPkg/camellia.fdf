@@ -82,13 +82,8 @@ READ_LOCK_STATUS   = TRUE
   !include Include/APRIORI.inc
   !include Include/DXE.inc
 
-  # UniXNU boot manager. UniXNUDxe registers the application as Boot####.
-  FILE DRIVER = 29B950CF-586D-49EA-9D71-F88645CCDAF6 {
-    SECTION PE32 = camelliaPkg/Binaries/UniXNU/UniXNUDxe.efi
-  }
-  FILE APPLICATION = 9B665204-A133-47A2-9396-9E2B370A4E25 {
-    SECTION PE32 = camelliaPkg/Binaries/UniXNU/UniXNU.efi
-  }
+  # XNU/UniXNU payloads are intentionally external. CamelliaUniXNULoaderDxe
+  # exposes the RAM disk and payload handoff used by an integration layer.
 
   # RAM Manager
   INF SiliciumPkg/Drivers/RamManagerDxe/RamManagerDxe.inf

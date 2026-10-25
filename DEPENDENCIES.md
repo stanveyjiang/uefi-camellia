@@ -60,17 +60,12 @@ changes on another phone, hardware revision or firmware baseline:
    - Mostly generic, but the RAM partition layout is specific to this boot
      payload.
 
-## Prebuilt component
+## External XNU component
 
-The following files are prebuilt binaries, not rebuilt from this source tree:
-
-```text
-Platforms/Xiaomi/camelliaPkg/Binaries/UniXNU/UniXNU.efi
-Platforms/Xiaomi/camelliaPkg/Binaries/UniXNU/UniXNUDxe.efi
-```
-
-They belong to the existing UniXNU/DarwinBoot integration. Replace or rebuild
-them when integrating a different XNU solution.
+This repository intentionally contains no XNU, UniXNU, DarwinBoot, kernelcache
+or payload image. Integrators add their own payload through the
+`CamelliaUniXNULoaderDxe` interface; the FD can be built and the handoff code
+can be modified without those binaries.
 
 ## Incomplete or likely to require debugging
 

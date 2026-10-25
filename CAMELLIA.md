@@ -11,8 +11,8 @@ the later persistent-trace experiments that regressed early UEFI startup.
 
 - Linux hot-jump into UEFI, when using the matching hot-jump FD base.
 - SEC, DXE, GOP and the scatter-page framebuffer shadow.
-- UniXNU RAM-disk publication and UniXNU application startup.
-- DarwinBoot handoff toward XNU.
+- RAM-disk publication and the external payload handoff.
+- A documented integration point for another XNU/UniXNU/DarwinBoot project.
 
 Known-good diagnostic artifacts:
 
@@ -109,7 +109,7 @@ Framebuffer mode    1088 x 7200 x 32 bpp
   UEFI starts. Use the exact known-good module and FD pair above.
 - The diagnostic `CAFE....` framebuffer probes from bring-up are not part of
   this clean source snapshot.
-- The RAM disk, trust cache and XNU payload are supplied separately.
+- The RAM disk, trust cache and all XNU payloads are supplied separately.
 
 ## Source provenance
 

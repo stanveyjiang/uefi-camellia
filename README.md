@@ -6,7 +6,8 @@ Clean, upload-ready source snapshot for the Xiaomi Redmi Note 10 5G
 This repository is derived from
 [Project-Silicium/Mu-Silicium](https://github.com/Project-Silicium/Mu-Silicium).
 The Camellia platform integrates UEFI, a scatter-page framebuffer shadow,
-RAM-disk publication, UniXNU and DarwinBoot.
+RAM-disk publication and a generic external payload handoff. XNU, UniXNU and
+DarwinBoot binaries are not bundled.
 
 ## Start here
 
@@ -64,9 +65,11 @@ See [CAMELLIA.md](CAMELLIA.md) for the exact use and limitations.
 - `Resources/Configs/camellia.toml`: boot image and FD geometry.
 - `Resources/DTBs/camellia.dtb`: stock device tree baseline.
 - `module/uefi_jump`: optional Linux-to-UEFI loader module source.
+- `Platforms/Xiaomi/camelliaPkg/Drivers/CamelliaUniXNULoaderDxe`: integration
+  point for an external XNU project.
 
 The source tree intentionally excludes generated `Build/`, local `.venv/`,
-firmware images and any private device data.
+firmware images, XNU payloads and any private device data.
 
 ## License and credits
 

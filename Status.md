@@ -18,7 +18,7 @@
 - Matching hot-jump module:
   `bec844cf909a8032efe33b58c879ba6ff499036263c824672a47afdc9f3a71c6`.
 - SEC/DXE/GOP, scatter-page framebuffer shadow, RAM-disk publication,
-  UniXNU and DarwinBoot startup.
+  and the external payload handoff.
 - The current source build path uses `build-camellia-hotjump.sh`, which moves
   both the FD base and the UEFI CPU stack.
 
@@ -31,6 +31,7 @@
 - Production display, touch, GPU and USB support.
 - Bring-up-only `CAFE....` progress probes, which are intentionally excluded
   from the clean source package.
+- XNU, UniXNU and DarwinBoot binaries are supplied by an external project.
 
 See [CAMELLIA.md](CAMELLIA.md) for build instructions and known-good artifact
 details.
