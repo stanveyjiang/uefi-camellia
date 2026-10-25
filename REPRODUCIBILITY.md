@@ -58,6 +58,7 @@ Expected properties:
 FD size       0x200000
 reset entry   AArch64 branch from 0xA0000000 to 0xA0001000
 C entry       inside 0xA0000000..0xA0200000
+stack setup   bytes at 0x1058 equal the known-good 0xA0200000 setup
 FV signature  _FVH at offset 0x28
 ```
 

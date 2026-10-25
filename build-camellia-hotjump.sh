@@ -60,5 +60,18 @@ if not 0xA0000000 <= entry < 0xA0200000:
     raise SystemExit(f"not a hot-jump FD: C entry {entry:#x}")
 print(f"hot-jump C entry: {entry:#x}")
 PY
+python3 - "$OUTPUT" <<'PY'
+from pathlib import Path
+import sys
+
+blob = Path(sys.argv[1]).read_bytes()
+expected = bytes.fromhex("0000e0d20000c0f20004b4f2000080f2")
+actual = blob[0x1058:0x1068]
+if actual != expected:
+    raise SystemExit(
+        "unexpected hot-jump SEC stack setup: "
+        f"expected {expected.hex()}, got {actual.hex()}")
+print("hot-jump SEC stack setup verified")
+PY
 
 sha256sum "$OUTPUT"
