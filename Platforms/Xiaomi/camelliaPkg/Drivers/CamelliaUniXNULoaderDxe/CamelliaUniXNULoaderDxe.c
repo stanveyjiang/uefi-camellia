@@ -9,6 +9,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Protocol/BlockIo.h>
+#include <Protocol/Cpu.h>
 #include <Protocol/DevicePath.h>
 #include <Protocol/DiskIo.h>
 #include <Protocol/FirmwareVolume2.h>
@@ -25,6 +26,10 @@ STATIC CONST CHAR16  mFirmwareMarker[] = L"unixnu:firmware";
 #define PAYLOAD_MAGIC      0x314D415249464555ULL
 #define RAM_BLOCK_SIZE     512
 #define RAM_PARTITION_LBA  2048
+#define TRACE_BASE         0x48080000ULL
+#define TRACE_RECORD_BASE  0x48081000ULL
+#define TRACE_RECORD_SIZE  0x40ULL
+#define TRACE_MAGIC        0x3145434152544655ULL /* "UFTRACE1" */
 
 #pragma pack(1)
 typedef struct {
@@ -40,6 +45,17 @@ typedef struct {
   HARDDRIVE_DEVICE_PATH     Partition;
   EFI_DEVICE_PATH_PROTOCOL  End;
 } RAM_DISK_DEVICE_PATH;
+
+typedef struct {
+  UINT64 Magic;
+  UINT64 MagicInverse;
+  UINT64 Stage;
+  UINT64 StageInverse;
+  UINT64 Status;
+  UINT64 StatusInverse;
+  UINT64 Counter;
+  UINT64 Reserved;
+} TRACE_RECORD;
 #pragma pack()
 
 STATIC RAM_DISK_DEVICE_PATH  mRamDevicePath = {
@@ -85,6 +101,47 @@ STATIC RAM_DISK_DEVICE_PATH  mRamDevicePath = {
 STATIC UINT8               *mRamBase;
 STATIC UINT64               mRamSize;
 STATIC EFI_BLOCK_IO_MEDIA   mRamMedia;
+
+STATIC
+VOID
+TraceStage (
+  IN UINT64  Stage,
+  IN UINT64  Status
+  )
+{
+  TRACE_RECORD              *Record;
+  EFI_CPU_ARCH_PROTOCOL     *Cpu;
+
+  if (Stage >= (0x1000 / TRACE_RECORD_SIZE)) {
+    return;
+  }
+  Record = (TRACE_RECORD *)(UINTN)(
+    TRACE_RECORD_BASE + Stage * TRACE_RECORD_SIZE
+    );
+  Record->Magic        = TRACE_MAGIC;
+  Record->MagicInverse = ~TRACE_MAGIC;
+  Record->Stage        = Stage;
+  Record->StageInverse = ~Stage;
+  Record->Status       = Status;
+  Record->StatusInverse = ~Status;
+  __asm__ volatile ("mrs %0, cntpct_el0" : "=r" (Record->Counter));
+  Record->Reserved = 0;
+  __asm__ volatile ("dsb sy" : : : "memory");
+
+  if (!EFI_ERROR (gBS->LocateProtocol (
+                         &gEfiCpuArchProtocolGuid,
+                         NULL,
+                         (VOID **)&Cpu
+                         )))
+  {
+    Cpu->FlushDataCache (
+           Cpu,
+           TRACE_RECORD_BASE,
+           TRACE_RECORD_SIZE * 0x1000 / TRACE_RECORD_SIZE,
+           EfiCpuFlushTypeWriteBackInvalidate
+           );
+  }
+}
 
 STATIC
 EFI_STATUS
@@ -352,11 +409,14 @@ CamelliaUniXNULoaderEntry (
   UINTN                         ExitDataSize;
   CHAR16                        *ExitData;
 
+  TraceStage (1, 0);
   Status = PublishRamDisk ();
   DEBUG ((DEBUG_ERROR, "CAMUNIXNU: publish ram disk %r\n", Status));
+  TraceStage (2, Status);
 
   ConnectStorage ();
   ReportStorage ();
+  TraceStage (3, 0);
 
   Status = gBS->LocateHandleBuffer (
                   ByProtocol,
@@ -399,10 +459,12 @@ CamelliaUniXNULoaderEntry (
   FreePool (Handles);
   if (Index == HandleCount) {
     DEBUG ((DEBUG_ERROR, "CAMUNIXNU: application not found in FV\n"));
+    TraceStage (4, EFI_NOT_FOUND);
     return EFI_NOT_FOUND;
   }
 
   DEBUG ((DEBUG_ERROR, "\fCAMUNIXNU: starting application, size=0x%lx\n", ImageSize));
+  TraceStage (5, ImageSize);
   ApplicationHandle = NULL;
   Status = gBS->LoadImage (
                   FALSE,
@@ -415,6 +477,7 @@ CamelliaUniXNULoaderEntry (
   FreePool (ImageData);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "CAMUNIXNU: LoadImage failed %r\n", Status));
+    TraceStage (6, Status);
     return Status;
   }
 
@@ -439,5 +502,6 @@ CamelliaUniXNULoaderEntry (
   ExitData = NULL;
   Status = gBS->StartImage (ApplicationHandle, &ExitDataSize, &ExitData);
   DEBUG ((DEBUG_ERROR, "CAMUNIXNU: StartImage returned %r\n", Status));
+  TraceStage (7, Status);
   return Status;
 }

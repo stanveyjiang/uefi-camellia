@@ -23,6 +23,7 @@
 
 [Protocols]
   gEfiBlockIoProtocolGuid                       ## CONSUMES
+  gEfiCpuArchProtocolGuid                       ## CONSUMES
   gEfiDevicePathProtocolGuid                    ## PRODUCES
   gEfiDiskIoProtocolGuid                        ## CONSUMES
   gEfiFirmwareVolume2ProtocolGuid               ## CONSUMES
