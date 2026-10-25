@@ -58,7 +58,9 @@ Mu-camellia.img
 ## Linux hot-jump FD
 
 The Linux loader must place the FD at `0xA0000000`, so the FD must be linked at
-that address. Do not reuse the cold-boot FD.
+that address. The UEFI CPU stack must also use the hot-jump-owned window at
+`0xA0200000`; `0x40000000` is not a safe stack after Android has occupied it.
+Do not reuse the cold-boot FD.
 
 ```bash
 ./build-camellia-hotjump.sh

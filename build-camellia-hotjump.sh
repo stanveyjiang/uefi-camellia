@@ -4,20 +4,30 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 CONFIG="$ROOT/Resources/Configs/camellia.toml"
 BACKUP=$(mktemp "$ROOT/.camellia.toml.XXXXXX")
+DSC="$ROOT/Platforms/Xiaomi/camelliaPkg/camellia.dsc"
+DSC_BACKUP=$(mktemp "$ROOT/.camellia.dsc.XXXXXX")
 FD="$ROOT/Build/camelliaPkg/DEBUG_CLANGPDB/FV/SILICIUM_UEFI.fd"
 OUTDIR="$ROOT/dist"
 OUTPUT="$OUTDIR/SILICIUM_UEFI-hotjump.fd"
 
 cleanup() {
 	cp "$BACKUP" "$CONFIG"
+	cp "$DSC_BACKUP" "$DSC"
 	find "$BACKUP" -maxdepth 0 -delete
+	find "$DSC_BACKUP" -maxdepth 0 -delete
 }
 trap cleanup EXIT
 
 cp "$CONFIG" "$BACKUP"
+cp "$DSC" "$DSC_BACKUP"
 sed -i 's/^base = 0x40080000$/base = 0xA0000000/' "$CONFIG"
+sed -i 's/^  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0x40000000$/  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0xA0200000/' "$DSC"
 grep -q '^base = 0xA0000000$' "$CONFIG" || {
 	echo "failed to select the hot-jump FD base" >&2
+	exit 1
+}
+grep -q 'PcdCPUCoresStackBase|0xA0200000' "$DSC" || {
+	echo "failed to select the hot-jump UEFI stack" >&2
 	exit 1
 }
 
