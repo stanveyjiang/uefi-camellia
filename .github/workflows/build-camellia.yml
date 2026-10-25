@@ -15,18 +15,36 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: camellia-uefi-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    env:
+      DEBIAN_FRONTEND: noninteractive
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
-      - name: Build camellia UEFI
+      - name: Install build dependencies
+        timeout-minutes: 30
+        run: |
+          bash ./setup_env.sh -p apt
+
+      - name: Build hot-jump UEFI
+        timeout-minutes: 30
         run: |
           export PATH=/usr/lib/llvm-18/bin:$PATH
-          bash ./setup_env.sh -p apt
           ./build-camellia-hotjump.sh -c
+
+      - name: Build cold-boot UEFI
+        timeout-minutes: 30
+        run: |
+          export PATH=/usr/lib/llvm-18/bin:$PATH
           ./build-camellia-coldboot.sh
 
       - name: Upload camellia UEFI artifacts
