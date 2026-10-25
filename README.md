@@ -20,7 +20,7 @@ DarwinBoot binaries are not bundled.
 ## Quick build
 
 ```bash
-git submodule update --init --recursive
+git submodule update --init
 ./setup_env.sh -p apt
 
 # Cold boot at 0x40080000

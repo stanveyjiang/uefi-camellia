@@ -32,7 +32,7 @@ hardware-validated build and are useful for comparing a local rebuild.
 ## Build dependencies
 
 ```bash
-git submodule update --init --recursive
+git submodule update --init
 ./setup_env.sh -p apt
 ```
 

@@ -41,7 +41,7 @@ Silicon/Silicium/OpensslPkg/Library/OpensslLib/openssl
 Restore them with:
 
 ```bash
-git submodule update --init --recursive
+git submodule update --init
 ```
 
 ## Build checks
