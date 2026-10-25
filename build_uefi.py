@@ -209,8 +209,12 @@ def prepare_uefi_environment (script_path: Path, build_mode: str, update: bool) 
     if not update and os.path.isdir (BUILD_PATH):
         return True
 
+    actions = ["--setup"]
+    if update:
+        actions.append ("--update")
+
     # Go thru each Environment Action
-    for action in ["--setup", "--update"]:
+    for action in actions:
         # Exeucute Environment Action
         result = subprocess.run ([sys.executable, str (script_path), action, "-t", build_mode])
         if result.returncode != 0:
