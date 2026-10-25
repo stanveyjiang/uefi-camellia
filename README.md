@@ -11,6 +11,7 @@ RAM-disk publication, UniXNU and DarwinBoot.
 ## Start here
 
 - [Camellia platform and build guide](CAMELLIA.md)
+- [Dependencies and debugging map](DEPENDENCIES.md)
 - [Pinned source revisions](REPRODUCIBILITY.md)
 - [Upstream build documentation](Building.md)
 - [Camellia porting notes](Platforms/Xiaomi/camelliaPkg/PORTING.md)

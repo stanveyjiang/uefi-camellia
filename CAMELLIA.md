@@ -105,3 +105,5 @@ Framebuffer mode    1088 x 7200 x 32 bpp
 
 The complete source attribution and upstream links are in `README.md`.
 The exact submodule revisions are in `REPRODUCIBILITY.md`.
+Device-specific dependencies and likely debugging points are listed in
+`DEPENDENCIES.md`.
