@@ -65,3 +65,8 @@ FV signature  _FVH at offset 0x28
 Byte-for-byte equality with the historical FD is not expected because build
 timestamps and compressed FV metadata can differ. The boot address, C entry,
 platform source and submodule revisions are the compatibility contract.
+
+`build_uefi.py` applies `Resources/MuPatches/Camellia-Essential.patch` after
+the five upstream Mu compatibility patches. This patch contains the hardware
+bring-up changes that were previously present only as uncommitted local
+changes in `Mu_Basecore`.

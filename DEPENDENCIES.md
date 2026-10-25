@@ -19,6 +19,11 @@ per-device unique-chip identifier.
 
 ## Camellia-specific source
 
+`Resources/MuPatches/Camellia-Essential.patch` is applied automatically by
+`build_uefi.py`. It carries the Camellia-specific GICv3 redistributor reset,
+timer behavior, DXE scheduling/loading changes and exception handling needed
+after the Linux hot-jump.
+
 These files are device-model specific and are the main places that may need
 changes on another phone, hardware revision or firmware baseline:
 
