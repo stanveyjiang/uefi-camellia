@@ -150,6 +150,9 @@ Resources/Scripts/bootimg-info.py
 ./build-camellia-hotjump.sh
 ```
 
+`setup_env.sh` 会安装 boot image 工具需要的 `cpio`、`libdrm-dev` 和
+`aarch64-linux-gnu-gcc`。
+
 准备：
 
 ```bash
