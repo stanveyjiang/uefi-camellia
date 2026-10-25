@@ -23,7 +23,7 @@ git submodule update --init --recursive
 ./setup_env.sh -p apt
 
 # Cold boot at 0x40080000
-python3 build_uefi.py -d camellia -r DEBUG
+./build-camellia-coldboot.sh
 
 # Linux hot-jump at 0xA0000000
 ./build-camellia-hotjump.sh

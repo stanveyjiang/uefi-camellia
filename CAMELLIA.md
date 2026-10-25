@@ -37,7 +37,9 @@ git submodule update --init --recursive
 ```
 
 Ubuntu/Debian is the tested Linux build host. The build also requires Python
-3.11 or newer.
+3.11 or newer and clang/lld 18. Later LLVM versions change UEFI code generation
+and can produce a firmware image that is not hardware-compatible with this
+validated baseline.
 
 ## Cold-boot FD
 
@@ -45,7 +47,7 @@ The checked-in configuration builds at the cold-boot address
 `0x40080000`:
 
 ```bash
-python3 build_uefi.py -d camellia -r DEBUG
+./build-camellia-coldboot.sh
 ```
 
 Output:

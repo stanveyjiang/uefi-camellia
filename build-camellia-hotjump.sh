@@ -2,6 +2,13 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+if [[ -d /usr/lib/llvm-18/bin ]]; then
+	export PATH=/usr/lib/llvm-18/bin:$PATH
+fi
+clang --version | grep -q 'version 18\.' || {
+	echo "clang 18 is required for the reproducible Camellia build" >&2
+	exit 1
+}
 CONFIG="$ROOT/Resources/Configs/camellia.toml"
 BACKUP=$(mktemp "$ROOT/.camellia.toml.XXXXXX")
 DSC="$ROOT/Platforms/Xiaomi/camelliaPkg/camellia.dsc"

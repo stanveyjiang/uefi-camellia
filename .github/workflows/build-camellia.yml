@@ -31,6 +31,7 @@ jobs:
         env:
           FD_BASE: ${{ inputs.fd_base }}
         run: |
+          export PATH=/usr/lib/llvm-18/bin:$PATH
           if [ -n "$FD_BASE" ]; then
             sed -i "s|^base = 0x40080000$|base = ${FD_BASE}|" Resources/Configs/camellia.toml
           fi
