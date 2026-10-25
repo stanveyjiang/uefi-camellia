@@ -82,6 +82,10 @@ FD base in `camellia.toml`; the CPU stack must also move from `0x40000000` to
 edk2-pytool-extensions before compilation starts. It is enabled automatically
 by both Camellia build wrappers and by `build_uefi.py`.
 
+The first build also uses `stuart_update` to install pinned external
+dependencies such as Mu-Basetools, `mu_nasm` and `onecrypto-bin`. This does not
+replace the fixed submodule commits listed above.
+
 The self-contained archive intentionally omits `.git`. When all vendored
 submodule directories are already present, `DeviceBuild.py` skips meaningless
 Git submodule resolution during `stuart_setup`. Git-only and bundle users keep
