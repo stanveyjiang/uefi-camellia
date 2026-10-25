@@ -8,7 +8,7 @@ on:
         required: true
         default: "0x40080000"
   push:
-    branches: ["camellia", "feature/camellia-bringup"]
+    branches: ["main", "camellia"]
     paths:
       - "Platforms/Xiaomi/camelliaPkg/**"
       - "Silicon/MediaTek/MT6833Pkg/**"
