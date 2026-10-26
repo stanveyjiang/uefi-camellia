@@ -42,6 +42,20 @@ workaround was to empty the `__versions` section with `patch_versions.py`
 and load the resulting `.ko` with plain `insmod`. Kept here in case we ever
 flash back to the A12 kernel.
 
+## Optional Android-side Root testing
+
+For fast iteration, a developer can patch their own matching stock boot with
+Magisk, boot Android with root, and load `uefi_jump.ko` from a root shell.
+
+Magisk only provides root. The running kernel must separately contain the
+Camellia `camellia_jump_to()` entry and the symbols used by the module. Do not
+publish a pre-rooted full boot image as the project baseline; distribute the
+kernel patch/source and module source instead.
+
+The complete sequence, safety limits, commands and payload behavior are in
+[`BOOT-IMAGE.zh-CN.md`](../../BOOT-IMAGE.zh-CN.md), section
+“Android 内 Root + 热跳测试”.
+
 ## Symbol resolution result (stage 0, on A13)
 
 Resolved (8): `smp_send_stop`, `memblock_reserve`, `memblock_find_in_range`,

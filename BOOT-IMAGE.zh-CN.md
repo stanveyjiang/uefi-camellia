@@ -179,7 +179,104 @@ dist/bootimage/initramfs.cpio.gz
 dist/bootimage/SHA256SUMS.txt
 ```
 
-## 8. 刷写
+## 8. 开发者可选：Android 内 Root + 热跳测试
+
+这条路线只用于开发者在 Android 用户态快速迭代，不用于公开分发 boot
+镜像，也不替代已经验证的 boot image 冷启动路线。
+
+不要公开提供带 Magisk 的完整 boot 二进制。应让使用者使用自己固件版本的
+原厂 boot，并提供内核源码/补丁、模块源码和操作步骤。
+
+### 8.1 Root 与原厂 boot
+
+1. 从当前设备固件中取得与系统版本完全匹配的原厂 `boot.img`。
+2. 先保存 `boot_a` 和 `vendor_boot_a` 回滚镜像。
+3. 在 Magisk App 中选择“安装 -> 选择并修补一个文件”，修补自己的原厂
+   `boot.img`。
+4. 只刷入修补后的 `boot_a`，确认 Android 和 `su` 正常。
+
+Magisk 只解决 Root，不会自动提供 Camellia 的 `jump2` 内核能力。
+
+### 8.2 内核对 jump2 的要求
+
+仅打 Magisk 的原厂内核通常不能完成热跳。内核还需要：
+
+- 与运行版本完全匹配的模块构建环境；
+- `KALLSYMS` / `KALLSYMS_ALL`，供模块解析内部符号；
+- 可用的 `smp_send_stop`、`memblock_reserve`、`memremap`、
+  `ioremap_cache` 等符号；
+- Camellia 的 `camellia_jump_to()` 跳转入口；
+- 适合接管 MTK DRM framebuffer 的内核状态。
+
+这里的 `camellia_jump_to()` 是内核侧实现，不是 Magisk 功能。若内核没有
+该入口，`uefi_jump.ko` 会出现未解析符号，无法跳转。
+
+公开分享时应提供对应内核补丁或源码，不应公开预 Root 的成品 boot。
+
+### 8.3 构建模块
+
+模块必须针对当前实际运行的内核构建：
+
+```bash
+make -C module/uefi_jump \
+  KDIR=/path/to/matching-kernel-build \
+  CLANG_DIR=/path/to/clang/bin
+```
+
+优先使用与设备内核完全相同的源码和配置。`module/uefi_jump/patch_versions.py`
+只能作为最后手段处理 `__versions` CRC 不匹配；它不能修复内核 ABI、符号或
+结构体差异。
+
+### 8.4 构建 framebuffer 工具和模块
+
+```bash
+make -C BootImage clean all
+```
+
+准备 Hot-jump FD、匹配 KO、`drm_linear` 和可选 payload：
+
+```bash
+./build-camellia-hotjump.sh
+
+adb push dist/SILICIUM_UEFI-hotjump.fd /data/local/tmp/uefi.fd
+adb push module/uefi_jump/uefi_jump.ko /data/local/tmp/uefi_jump.ko
+adb push BootImage/build/drm_linear /data/local/tmp/drm_linear
+adb push /path/to/64MiB-payload.img /data/local/tmp/payload.img
+adb shell 'chmod 755 /data/local/tmp/drm_linear'
+```
+
+从 Android 内执行：
+
+```bash
+adb shell "su -c '
+  stop vendor.hwcomposer-2-1
+  stop surfaceflinger
+  pkill -x drm_linear 2>/dev/null
+  nohup /data/local/tmp/drm_linear /dev/dri/card0 0xFFFF0000 \
+    >/data/local/tmp/drm_linear.log 2>&1 &
+  sleep 3
+  insmod /data/local/tmp/uefi_jump.ko \
+    fd_path=/data/local/tmp/uefi.fd \
+    payload_path=/data/local/tmp/payload.img \
+    payload_bytes=67108864 \
+    hb=0 jump=1
+'"
+```
+
+只测试进入 UEFI、不接 UniXNU 时，可以省略 `payload_path` 和
+`payload_bytes`。要完整验证 UEFI -> UniXNU 链路，则必须提供正确 payload。
+
+热跳后 Android 不会继续运行；测试结束通常需要长按电源键或使用设备既有的
+fastboot 按键组合重启。
+
+### 8.5 分发边界
+
+- 不公开带 Magisk 的完整 boot。
+- 不把 Root 当作 UEFI 运行前提；最终 boot image 已不依赖 Magisk。
+- 需要可复现时，提供内核源码/补丁、模块源码、工具源码和固定版本信息。
+- 每个使用者必须使用自己固件版本对应的原厂 boot 和回滚文件。
+
+## 9. 刷写
 
 先确认设备处于 fastboot 模式，并备份原厂分区：
 
@@ -199,7 +296,7 @@ fastboot reboot
   一致。
 - 不建议在本设备使用 `fastboot boot`。
 
-## 9. 屏幕阶段
+## 10. 屏幕阶段
 
 当前 initramfs 状态色：
 
@@ -214,7 +311,7 @@ UEFI 日志/四色带   已进入 UEFI
 如果不出现青色，不要继续修改 UEFI DXE。先检查 DRM、OVL、IOMMU、
 framebuffer page map 和 KO/FD 地址配对。
 
-## 10. 回滚
+## 11. 回滚
 
 必须提前保存原厂分区，然后执行：
 
@@ -227,7 +324,7 @@ fastboot reboot
 如果设备不能进入 fastboot，使用设备既有的 LK/fastboot 按键组合恢复。
 本仓库不提供分区备份。
 
-## 11. 后续建议
+## 12. 后续建议
 
 1. 保留已验证的 FD/KO 对和原厂 boot 分区。
 2. 优先验证最小 initramfs 链路，再接 XNU payload。
