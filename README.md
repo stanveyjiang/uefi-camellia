@@ -12,6 +12,7 @@ DarwinBoot binaries are not bundled.
 ## Start here
 
 - [Camellia platform and build guide](CAMELLIA.md)
+- [Release artifacts and variable names](ARTIFACTS.zh-CN.md)
 - [Detailed Chinese porting and maintenance guide](GUIDE.zh-CN.md)
 - [Boot image packaging and validation](BOOT-IMAGE.zh-CN.md)
 - [Dependencies and debugging map](DEPENDENCIES.md)
@@ -57,6 +58,11 @@ SHA-256 bec844cf909a8032efe33b58c879ba6ff499036263c824672a47afdc9f3a71c6
 
 The FD and module are a tested pair. Use them together when recovering from a
 failed local build.
+
+`UEFI_FD` and `UEFI_KO` are build-script variable names, not file names.
+`UEFI_KO` points to the Linux module `uefi_jump.ko`. The final prebuilt boot
+image already embeds both files. See
+[ARTIFACTS.zh-CN.md](ARTIFACTS.zh-CN.md) for the complete mapping.
 
 See [CAMELLIA.md](CAMELLIA.md) for the exact use and limitations.
 

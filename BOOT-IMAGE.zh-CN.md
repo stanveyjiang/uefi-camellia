@@ -165,6 +165,17 @@ export PAYLOAD_IMG=/path/to/64MiB-payload.img
 `UEFI_KO` 和 `UEFI_FD` 必须匹配。`PAYLOAD_IMG` 必须是恰好 64 MiB 的原始
 镜像，最终会写入 `vendor_boot_a`，不会嵌入 boot image。
 
+这里的 `UEFI_KO` 和 `UEFI_FD` 是构建脚本变量，不是文件格式：
+
+```text
+UEFI_KO -> uefi_jump-known-good.ko
+UEFI_FD -> SILICIUM_UEFI-hotjump-known-good.fd
+```
+
+脚本会把它们复制成 initramfs 内的 `/uefi_jump.ko` 和 `/uefi.fd`。直接刷
+已经构建好的 `camellia-preboot-uefi-v2026.10.26.img` 时，不需要设置这些变量。
+完整对照见 [ARTIFACTS.zh-CN.md](ARTIFACTS.zh-CN.md)。
+
 构建：
 
 ```bash
